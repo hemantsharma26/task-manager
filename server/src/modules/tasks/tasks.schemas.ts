@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DUE_FILTERS, ORDER, PAGINATION, PATTERN, RICH_TEXT_LIMITS, SORT, SORT_FIELDS, SORT_ORDERS, TASK_LIMITS, VALIDATION_MESSAGE } from '../../constants/index.js';
+import { ASSIGNEE_FILTER, DUE_FILTERS, TEAM, ORDER, PAGINATION, PATTERN, RICH_TEXT_LIMITS, SORT, SORT_FIELDS, SORT_ORDERS, TASK_LIMITS, VALIDATION_MESSAGE } from '../../constants/index.js';
 import { isRealIsoDate } from '../../shared/utils/dates.js';
 
 /** YYYY-MM-DD that is also a real calendar date (rejects 2026-02-31). */
@@ -18,6 +18,11 @@ const objectId = z.string().regex(PATTERN.OBJECT_ID, VALIDATION_MESSAGE.INVALID_
 const title = z.string().trim().min(1, VALIDATION_MESSAGE.TITLE_REQUIRED).max(TASK_LIMITS.TITLE_MAX, VALIDATION_MESSAGE.TITLE_TOO_LONG(TASK_LIMITS.TITLE_MAX));
 // The note arrives as HTML (or plain text). Its visible length is checked after cleaning, in the service.
 const description = z.string().max(RICH_TEXT_LIMITS.HTML_MAX, VALIDATION_MESSAGE.DESCRIPTION_TOO_LONG(RICH_TEXT_LIMITS.HTML_MAX));
+/** Who a task is assigned to: ids of people on the board's team (checked against the real team in the service). Duplicates collapse. */
+const assignees = z
+  .array(objectId, { error: VALIDATION_MESSAGE.ASSIGNEES })
+  .max(TEAM.MAX_ASSIGNEES, VALIDATION_MESSAGE.TOO_MANY_ASSIGNEES(TEAM.MAX_ASSIGNEES))
+  .transform((ids) => [...new Set(ids)]);
 const cardColor = z.string().regex(PATTERN.HEX_COLOR, VALIDATION_MESSAGE.COLOR).transform((c) => c.toLowerCase());
 
 export const createTaskSchema = z
@@ -32,13 +37,14 @@ export const createTaskSchema = z
     dueTime: timeOfDay.nullable().default(null),
     startTime: timeOfDay.nullable().default(null),
     color: cardColor.nullable().default(null),
+    assignees: assignees.default([]),
   })
   .refine((v) => v.dueTime === null || v.dueDate !== null, { path: ['dueTime'], message: VALIDATION_MESSAGE.TIME_NEEDS_DATE })
   .refine((v) => v.startTime === null || v.dueTime !== null, { path: ['startTime'], message: VALIDATION_MESSAGE.START_NEEDS_END })
   .refine((v) => v.startTime === null || v.dueTime === null || v.startTime < v.dueTime, { path: ['startTime'], message: VALIDATION_MESSAGE.END_AFTER_START });
 
 export const updateTaskSchema = z
-  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable(), startTime: timeOfDay.nullable(), color: cardColor.nullable() })
+  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable(), startTime: timeOfDay.nullable(), color: cardColor.nullable(), assignees })
   .partial()
   .refine((v) => Object.keys(v).length > 0, VALIDATION_MESSAGE.NOTHING_TO_UPDATE);
 
@@ -50,6 +56,8 @@ export const listQuerySchema = z.object({
   priority: priorityKey.optional(),
   due: z.enum(DUE_FILTERS).optional(),
   q: z.string().trim().max(TASK_LIMITS.SEARCH_MAX).optional(),
+  // Whose tasks: "me", "unassigned", or one person's id.
+  assignee: z.union([z.enum([ASSIGNEE_FILTER.ME, ASSIGNEE_FILTER.UNASSIGNED]), objectId]).optional(),
   // The client sends its own local date so "overdue" respects the user's timezone.
   today: isoDate.optional(),
   // The client's current local time. With it, "overdue" also counts today's tasks whose time has passed.

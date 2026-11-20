@@ -1,6 +1,7 @@
-import { env } from '../../config/env.js';
-import { DEFAULT_COLUMN_FALLBACK_KEY, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, RANK_STEP, RICH_TEXT_LIMITS, SORT, VALIDATION_MESSAGE } from '../../constants/index.js';
+import { appUrl, env } from '../../config/env.js';
+import { ASSIGNEE_FILTER, DEFAULT_COLUMN_FALLBACK_KEY, issueKey, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, RANK_STEP, RICH_TEXT_LIMITS, SORT, VALIDATION_MESSAGE } from '../../constants/index.js';
 import { cache, cacheKeys, type Cached } from '../../infra/cache/index.js';
+import { assignmentMail, sendMail } from '../../infra/mail/index.js';
 import { HttpError } from '../../shared/errors/http-error.js';
 import { cleanNote } from '../../shared/utils/html.js';
 import { removeStoredFiles } from '../attachments/attachments.storage.js';
@@ -8,14 +9,30 @@ import { todayUtc } from '../../shared/utils/dates.js';
 import { rankBetween } from '../../shared/utils/rank.js';
 import { columnsOf } from '../columns/columns.service.js';
 import { prioritiesOf } from '../priorities/priorities.service.js';
+import { assignableIds, boardLabel, peopleByIds } from '../team/team.service.js';
 import type { TaskStatus } from './task.model.js';
 import { buildFilter } from './tasks.filters.js';
-import { toTaskDTO } from './tasks.mapper.js';
+import { toTaskDTO, type TaskLike } from './tasks.mapper.js';
 import type { CreateTaskInput, ListQuery, MoveTaskInput, UpdateTaskInput } from './tasks.schemas.js';
 import { taskRepository } from './tasks.repository.js';
 
+/** Who is making a change (for emails like "Asha assigned you ..."). */
+export interface Actor {
+  id: string;
+  name: string;
+}
+
 type ColumnInfo = { key: string; isDone: boolean };
 const doneKeysOf = (columns: ColumnInfo[]) => columns.filter((c) => c.isDone).map((c) => c.key);
+
+/** Tasks as the API shows them: with each assignee's name and email filled in (one lookup for the whole page). */
+export async function presentTasks(docs: TaskLike[]) {
+  const ids = [...new Set(docs.flatMap((d) => (d.assignees ?? []).map(String)))];
+  const people = ids.length ? await peopleByIds(ids) : undefined;
+  return docs.map((d) => toTaskDTO(d, people));
+}
+
+export const presentTask = async (doc: TaskLike) => (await presentTasks([doc]))[0]!;
 
 // Read side (cached) ---------------------------------------------------------------------------------
 
@@ -23,7 +40,9 @@ const doneKeysOf = (columns: ColumnInfo[]) => columns.filter((c) => c.isDone).ma
  * One page of tasks. The cache key holds the user's version and a hash of the whole query, so a different filter,
  * sort or page is a different entry, and any write by this user makes every entry of theirs unreachable at once.
  */
-export async function listTasks(userId: string, query: ListQuery): Promise<Cached<ReturnType<typeof buildPage>>> {
+export async function listTasks(userId: string, rawQuery: ListQuery, viewerId: string = userId): Promise<Cached<ReturnType<typeof buildPage>>> {
+  // "Assigned to me" means a different person for every viewer, so it is turned into their id before it can become part of a cache key.
+  const query = rawQuery.assignee === ASSIGNEE_FILTER.ME ? { ...rawQuery, assignee: viewerId } : rawQuery;
   const version = await cache.versionOf(userId);
   return cache.remember(cacheKeys.taskList(userId, version, query), env.CACHE_TTL_TASK_LIST_SECONDS, async () => {
     // Only the "overdue" filter needs to know which columns count as finished.
@@ -32,7 +51,7 @@ export async function listTasks(userId: string, query: ListQuery): Promise<Cache
     // Sorting by priority follows the user's own order of priorities, so that list is needed for it (and only for it).
     const priorityOrder = query.sort === SORT.PRIORITY ? (await prioritiesOf(userId)).map((p) => p.key) : [];
     const [items, total] = await Promise.all([taskRepository.findPage(filter, query, priorityOrder), taskRepository.count(filter)]);
-    return buildPage(items.map(toTaskDTO), total, query);
+    return buildPage(await presentTasks(items), total, query);
   });
 }
 
@@ -53,7 +72,7 @@ export async function getStats(userId: string, today = todayUtc(), nowTime?: str
 }
 
 export async function getTask(userId: string, id: string) {
-  return toTaskDTO(await requireOwned(userId, id));
+  return presentTask(await requireOwned(userId, id));
 }
 
 // Write side (always invalidates the user's cached reads, after the database write has committed) ----
@@ -89,21 +108,43 @@ function note(raw: string) {
   return { description: html, descriptionText: text };
 }
 
+/** Only the board's owner and the people who joined it can be given a task. */
+async function requireAssignable(workspaceId: string, ids: string[]) {
+  if (ids.length === 0) return;
+  const allowed = await assignableIds(workspaceId);
+  if (ids.some((id) => !allowed.has(id))) throw HttpError.badRequest(ERROR_MESSAGE.ASSIGNEE_NOT_ON_TEAM);
+}
+
+const dueText = (t: { dueDate: string | null; dueTime: string | null; startTime: string | null }) =>
+  !t.dueDate ? null : `${t.dueDate}${t.dueTime ? (t.startTime ? ` ${t.startTime}-${t.dueTime}` : ` by ${t.dueTime}`) : ''}`;
+
+/** Tells the people who were just given a task. Never the person who did the assigning, and never blocks the request. */
+async function notifyAssigned(workspaceId: string, actor: Actor, task: { id: string; number: number; title: string; dueDate: string | null; dueTime: string | null; startTime: string | null }, added: string[]) {
+  const recipients = added.filter((id) => id !== actor.id);
+  if (recipients.length === 0) return;
+  const [people, board] = await Promise.all([peopleByIds(recipients), boardLabel(workspaceId)]);
+  for (const person of people.values()) {
+    void sendMail(assignmentMail({ to: person.email, assignerName: actor.name, taskKey: issueKey(task.number), taskTitle: task.title, projectName: board, dueText: dueText(task), url: `${appUrl}/?board=${workspaceId}&task=${task.id}` }));
+  }
+}
+
 const endRank = async (userId: string, status: TaskStatus) => (await taskRepository.lastRank(userId, status)) + RANK_STEP;
 
-export async function createTask(userId: string, input: CreateTaskInput) {
+export async function createTask(userId: string, input: CreateTaskInput, actor: Actor = { id: userId, name: '' }) {
   const columns = await columnsOf(userId);
   const column = input.status ? columns.find((c) => c.key === input.status) : columns[0];
   if (!column) throw HttpError.badRequest(ERROR_MESSAGE.UNKNOWN_COLUMN(input.status ?? DEFAULT_COLUMN_FALLBACK_KEY));
 
+  await requireAssignable(userId, input.assignees);
   const priority = input.priority ? await requirePriority(userId, input.priority) : await defaultPriority(userId);
   const [number, rank] = await Promise.all([taskRepository.nextIssueNumber(userId), endRank(userId, column.key)]);
   const task = await taskRepository.create({ ...input, ...note(input.description), status: column.key, priority, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
   await cache.invalidateUser(userId);
-  return toTaskDTO(task);
+  void notifyAssigned(userId, actor, { id: String(task._id), number, title: task.title, dueDate: task.dueDate, dueTime: task.dueTime, startTime: task.startTime }, input.assignees);
+  return presentTask(task);
 }
 
-export async function updateTask(userId: string, id: string, input: UpdateTaskInput) {
+export async function updateTask(userId: string, id: string, input: UpdateTaskInput, actor: Actor = { id: userId, name: '' }) {
   const task = await requireOwned(userId, id);
   // Changing status through the form (not a drag) lands the task at the bottom of its new column.
   if (input.status && input.status !== task.status) {
@@ -112,6 +153,8 @@ export async function updateTask(userId: string, id: string, input: UpdateTaskIn
     task.completedAt = column.isDone ? new Date() : null;
   }
   if (input.priority) await requirePriority(userId, input.priority);
+  const before = task.assignees.map(String);
+  if (input.assignees) await requireAssignable(userId, input.assignees);
 
   // A time only means something on a date: clearing the date clears the time, and a time without a date is refused.
   const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
@@ -125,7 +168,8 @@ export async function updateTask(userId: string, id: string, input: UpdateTaskIn
   task.set({ ...input, ...(input.description !== undefined ? note(input.description) : {}), dueDate, dueTime, startTime });
   await task.save();
   await cache.invalidateUser(userId);
-  return toTaskDTO(task);
+  if (input.assignees) void notifyAssigned(userId, actor, { id: String(task._id), number: task.number, title: task.title, dueDate: task.dueDate, dueTime: task.dueTime, startTime: task.startTime }, input.assignees.filter((a) => !before.includes(a)));
+  return presentTask(task);
 }
 
 /**
@@ -158,7 +202,7 @@ export async function moveTask(userId: string, id: string, input: MoveTaskInput)
   task.rank = rank;
   await task.save();
   await cache.invalidateUser(userId);
-  return toTaskDTO(task);
+  return presentTask(task);
 }
 
 export async function deleteTask(userId: string, id: string) {

@@ -58,7 +58,7 @@ const tasks: SeedTask[] = [
 ];
 
 // Go through the same service the API uses, so numbers, ranks and completedAt are set exactly as in real use.
-for (const t of tasks) await createTask(String(user._id), { description: '', dueTime: null, startTime: null, color: null, ...t });
+for (const t of tasks) await createTask(String(user._id), { description: '', dueTime: null, startTime: null, color: null, assignees: [], ...t });
 
 console.log(`Seeded ${tasks.length} tasks for ${DEMO.email} (password: ${DEMO.password})`);
 await Promise.all([disconnectDb(), cache.close()]);

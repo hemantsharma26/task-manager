@@ -25,8 +25,11 @@ export const ROUTE = {
   },
   COLUMNS: { BASE: '/columns', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
   PRIORITIES: { BASE: '/priorities', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
+  TEAM: { BASE: '/team', MEMBERS: '/members', MEMBER_BY_ID: '/members/:userId', INVITATIONS: '/invitations', INVITATION_BY_ID: '/invitations/:invitationId' },
+  INVITATIONS: { BASE: '/invitations', BY_TOKEN: '/:token', ACCEPT: '/:token/accept' },
+  WORKSPACES: { BASE: '/workspaces' },
 } as const;
 
-export const ROUTE_PARAM = { ID: 'id', ATTACHMENT_ID: 'attachmentId' } as const;
+export const ROUTE_PARAM = { ID: 'id', ATTACHMENT_ID: 'attachmentId', USER_ID: 'userId', INVITATION_ID: 'invitationId', TOKEN: 'token' } as const;
 
 export const HEALTH_STATUS = { OK: 'ok' } as const;

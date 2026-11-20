@@ -12,5 +12,6 @@ export * from './priorities.js';
 export * from './richtext.js';
 export * from './routes.js';
 export * from './tasks.js';
+export * from './team.js';
 export * from './uploads.js';
 export * from './validation.js';

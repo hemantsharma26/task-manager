@@ -12,25 +12,25 @@ async function sendList(userId: string, res: Response, status: number = HTTP_STA
   res.status(status).set(HEADER.X_CACHE, cacheStatus).json({ priorities: value.map(toPriorityDTO) });
 }
 
-export const list = (req: Request, res: Response) => sendList(req.userId!, res);
+export const list = (req: Request, res: Response) => sendList(req.workspaceId!, res);
 
 export async function create(req: Request, res: Response) {
-  await priorities.createPriority(req.userId!, createPrioritySchema.parse(req.body));
-  await sendList(req.userId!, res, HTTP_STATUS.CREATED);
+  await priorities.createPriority(req.workspaceId!, createPrioritySchema.parse(req.body));
+  await sendList(req.workspaceId!, res, HTTP_STATUS.CREATED);
 }
 
 export async function update(req: Request, res: Response) {
-  await priorities.updatePriority(req.userId!, idOf(req), updatePrioritySchema.parse(req.body));
-  await sendList(req.userId!, res);
+  await priorities.updatePriority(req.workspaceId!, idOf(req), updatePrioritySchema.parse(req.body));
+  await sendList(req.workspaceId!, res);
 }
 
 export async function move(req: Request, res: Response) {
-  await priorities.movePriority(req.userId!, idOf(req), movePrioritySchema.parse(req.body));
-  await sendList(req.userId!, res);
+  await priorities.movePriority(req.workspaceId!, idOf(req), movePrioritySchema.parse(req.body));
+  await sendList(req.workspaceId!, res);
 }
 
 export async function remove(req: Request, res: Response) {
   const { moveTo } = deletePriorityQuerySchema.parse(req.query);
-  await priorities.deletePriority(req.userId!, idOf(req), moveTo);
-  await sendList(req.userId!, res);
+  await priorities.deletePriority(req.workspaceId!, idOf(req), moveTo);
+  await sendList(req.workspaceId!, res);
 }

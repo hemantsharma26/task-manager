@@ -21,8 +21,15 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * for, or fail because of, a mail server, so delivery runs in the background with a few retries, and a failure is
  * logged instead of thrown. The returned promise resolves when delivery has finished, which tests wait for.
  */
+const pending = new Set<Promise<boolean>>();
+
+/** Resolves when every email queued so far has been delivered or given up on. */
+export const flushMail = async () => {
+  await Promise.allSettled([...pending]);
+};
+
 export function sendMail(mail: OutgoingMail, retryDelayMs: number = MAIL.RETRY_DELAY_MS): Promise<boolean> {
-  return (async () => {
+  const job = (async () => {
     for (let attempt = 1; attempt <= MAIL.MAX_ATTEMPTS; attempt++) {
       try {
         await mailer.send(mail);
@@ -36,6 +43,9 @@ export function sendMail(mail: OutgoingMail, retryDelayMs: number = MAIL.RETRY_D
     logger.error({ to: mail.to, subject: mail.subject }, MAIL_LOG.GAVE_UP);
     return false;
   })();
+  pending.add(job);
+  void job.finally(() => pending.delete(job));
+  return job;
 }
 
 export const closeMail = () => mailer.close();

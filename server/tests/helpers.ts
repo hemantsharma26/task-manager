@@ -5,6 +5,8 @@ import { connectDb, disconnectDb } from '../src/infra/database/connection.js';
 import { User } from '../src/modules/auth/user.model.js';
 import { Column } from '../src/modules/columns/column.model.js';
 import { Task } from '../src/modules/tasks/task.model.js';
+import { Invitation } from '../src/modules/team/invitation.model.js';
+import { Membership } from '../src/modules/team/membership.model.js';
 
 export const app = createApp();
 
@@ -13,7 +15,7 @@ export async function startDb() {
 }
 
 export async function resetDb() {
-  await Promise.all([User.deleteMany({}), Task.deleteMany({}), Column.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), Task.deleteMany({}), Column.deleteMany({}), Membership.deleteMany({}), Invitation.deleteMany({})]);
 }
 
 export async function stopDb() {

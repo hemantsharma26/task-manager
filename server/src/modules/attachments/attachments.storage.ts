@@ -20,7 +20,8 @@ export function storedPath(ownerId: string, storedName: string): string {
 export const multerUpload = multer({
   storage: multer.diskStorage({
     destination: (req, _file, cb) => {
-      const dir = ownerDir(String(req.userId));
+      // Files live with the board they belong to, so everyone who can see the task can see its files.
+      const dir = ownerDir(String(req.workspaceId ?? req.userId));
       mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },

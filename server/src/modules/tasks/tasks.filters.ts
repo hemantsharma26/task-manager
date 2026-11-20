@@ -1,10 +1,10 @@
 import { Types, type PipelineStage } from 'mongoose';
-import { COMPUTED_FIELD, DUE, NO_TIME_SORT_KEY, SORT, SORT_DIRECTION, WEEK_SPAN_DAYS, type SortField } from '../../constants/index.js';
+import { ASSIGNEE_FILTER, COMPUTED_FIELD, DUE, NO_TIME_SORT_KEY, SORT, SORT_DIRECTION, WEEK_SPAN_DAYS, type SortField } from '../../constants/index.js';
 import { addDays, todayUtc } from '../../shared/utils/dates.js';
 import { escapeRegex } from '../../shared/utils/text.js';
 import type { ListQuery } from './tasks.schemas.js';
 
-type Filterable = Pick<ListQuery, 'status' | 'priority' | 'due' | 'q' | 'today' | 'nowTime'>;
+type Filterable = Pick<ListQuery, 'status' | 'priority' | 'assignee' | 'due' | 'q' | 'today' | 'nowTime'>;
 
 /** Due before today, or due today at a time that has already passed. */
 export function overdueCondition(today: string, nowTime?: string) {
@@ -21,6 +21,9 @@ export function buildFilter(userId: string, q: Filterable, doneKeys: string[]) {
 
   if (q.status) filter.status = q.status;
   if (q.priority) filter.priority = q.priority;
+  // By now "me" has been replaced with a real id (so the cached result is never shared between two people).
+  if (q.assignee === ASSIGNEE_FILTER.UNASSIGNED) filter.assignees = { $size: 0 };
+  else if (q.assignee && q.assignee !== ASSIGNEE_FILTER.ME) filter.assignees = new Types.ObjectId(q.assignee);
   if (q.q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
     // The visible text of the note is searched, never its HTML markup. Tasks from before the note had a text field are matched on their plain description.

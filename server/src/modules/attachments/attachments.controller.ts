@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 import { ERROR_MESSAGE, FILE_CSP, HEADER, HTTP_STATUS, ATTACHMENT_KIND, ROUTE_PARAM, UPLOAD } from '../../constants/index.js';
 import { HttpError } from '../../shared/errors/http-error.js';
-import { toTaskDTO } from '../tasks/tasks.mapper.js';
+import { presentTask } from '../tasks/tasks.service.js';
 import * as attachments from './attachments.service.js';
 import { multerUpload } from './attachments.storage.js';
 
@@ -25,20 +25,20 @@ export function receiveFiles(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function upload(req: Request, res: Response) {
-  const task = await attachments.addAttachments(req.userId!, taskIdOf(req), (req.files as Express.Multer.File[] | undefined) ?? []);
-  res.status(HTTP_STATUS.CREATED).json({ task: toTaskDTO(task) });
+  const task = await attachments.addAttachments(req.workspaceId!, taskIdOf(req), (req.files as Express.Multer.File[] | undefined) ?? []);
+  res.status(HTTP_STATUS.CREATED).json({ task: await presentTask(task) });
 }
 
 export async function remove(req: Request, res: Response) {
-  const task = await attachments.removeAttachment(req.userId!, taskIdOf(req), String(req.params[ROUTE_PARAM.ATTACHMENT_ID]));
-  res.json({ task: toTaskDTO(task) });
+  const task = await attachments.removeAttachment(req.workspaceId!, taskIdOf(req), String(req.params[ROUTE_PARAM.ATTACHMENT_ID]));
+  res.json({ task: await presentTask(task) });
 }
 
 /** RFC 5987 filename: an ASCII fallback plus the real UTF-8 name, with quotes and backslashes made harmless. */
 const disposition = (name: string) => `inline; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 
 export async function download(req: Request, res: Response) {
-  const file = await attachments.locateAttachment(req.userId!, taskIdOf(req), String(req.params[ROUTE_PARAM.ATTACHMENT_ID]));
+  const file = await attachments.locateAttachment(req.workspaceId!, taskIdOf(req), String(req.params[ROUTE_PARAM.ATTACHMENT_ID]));
   res.set({
     [HEADER.CACHE_CONTROL]: `private, max-age=${UPLOAD.CACHE_SECONDS}`,
     // Served as the type it really is, and the browser may not guess a different one.

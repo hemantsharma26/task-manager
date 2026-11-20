@@ -38,6 +38,8 @@ export interface ITask {
   dueTime: string | null;
   /** Optional start of the window, HH:MM. Only set together with a dueTime, and always earlier than it. */
   startTime: string | null;
+  /** The people this task is assigned to: the board's owner and/or members who joined through an invitation. */
+  assignees: Types.ObjectId[];
   attachments: IAttachment[];
   completedAt: Date | null;
   createdAt: Date;
@@ -59,6 +61,7 @@ const taskSchema = new Schema<ITask>(
     dueDate: { type: String, default: null, match: PATTERN.ISO_DATE },
     dueTime: { type: String, default: null, match: PATTERN.TIME_24H },
     startTime: { type: String, default: null, match: PATTERN.TIME_24H },
+    assignees: { type: [Schema.Types.ObjectId], ref: MODEL.USER, default: [] },
     attachments: {
       type: [
         new Schema<IAttachment>({
@@ -84,6 +87,7 @@ taskSchema.index({ owner: 1, number: 1 }, { unique: true });
 taskSchema.index({ owner: 1, status: 1, rank: 1, _id: 1 }); // board columns
 taskSchema.index({ owner: 1, createdAt: -1, _id: -1 }); // list view, newest first
 taskSchema.index({ owner: 1, status: 1, dueDate: 1 }); // overdue / due filters
+taskSchema.index({ owner: 1, assignees: 1 }); // "assigned to me"
 
 export type TaskDoc = HydratedDocument<ITask>;
 export const Task = model<ITask>(MODEL.TASK, taskSchema);

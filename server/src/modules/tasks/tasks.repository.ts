@@ -70,6 +70,9 @@ export const taskRepository = {
     await Task.bulkWrite(rows.map((r, i) => ({ updateOne: { filter: { _id: r._id }, update: { $set: { rank: (i + 1) * RANK_STEP } } } })));
   },
 
+  /** Takes a person off every task of a board (when they are removed from its team). */
+  unassign: (ownerId: string, userId: string) => Task.updateMany({ owner: ownerId, assignees: userId }, { $pull: { assignees: asObjectId(userId) } }),
+
   // ----- used when a priority is deleted (priorities module)
   countWithPriority: (ownerId: string, priority: string) => Task.countDocuments({ owner: ownerId, priority }),
   reassignPriority: (ownerId: string, from: string, to: string) => Task.updateMany({ owner: ownerId, priority: from }, { $set: { priority: to } }),
