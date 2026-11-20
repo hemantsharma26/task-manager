@@ -6,6 +6,7 @@ export * from './common-passwords.js';
 export * from './errors.js';
 export * from './http.js';
 export * from './logging.js';
+export * from './mail.js';
 export * from './models.js';
 export * from './priorities.js';
 export * from './richtext.js';
