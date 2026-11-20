@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RANK_STEP, rankBetween } from '../src/utils/rank.js';
+import { RANK_STEP } from '../src/constants/index.js';
+import { rankBetween } from '../src/shared/utils/rank.js';
 
 describe('rankBetween', () => {
   it('starts an empty column at one step', () => {

@@ -8,13 +8,16 @@
 //   npm run migrate:numbers
 import mongoose from 'mongoose';
 import { env } from '../src/config/env.js';
-import { RANK_STEP } from '../src/utils/rank.js';
+import { RANK_STEP } from '../src/constants/index.js';
+import { Counter } from '../src/modules/tasks/counter.model.js';
+import { Task } from '../src/modules/tasks/task.model.js';
 
 type Row = { _id: mongoose.Types.ObjectId; owner: mongoose.Types.ObjectId; status: string; number?: number | null; rank?: number | null };
 
 await mongoose.connect(env.MONGODB_URI);
-const tasks = mongoose.connection.collection<Row>('tasks');
-const counters = mongoose.connection.collection<{ _id: string; seq: number }>('counters');
+// The raw collections behind the models: this script must not rely on schema defaults or index syncing.
+const tasks = Task.collection as unknown as mongoose.mongo.Collection<Row>;
+const counters = Counter.collection as unknown as mongoose.mongo.Collection<{ _id: string; seq: number }>;
 
 const owners = await tasks.distinct('owner', { $or: [{ number: { $exists: false } }, { number: null }, { rank: { $exists: false } }] });
 let touched = 0;

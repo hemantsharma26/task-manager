@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { Task } from '../src/models/Task.js';
+import { Task } from '../src/modules/tasks/task.model.js';
 import { app, resetDb, signedInAgent, startDb, stopDb } from './helpers.js';
 
 beforeAll(startDb);

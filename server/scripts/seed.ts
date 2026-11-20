@@ -1,12 +1,14 @@
 // Creates a demo account with a realistic spread of tasks. Safe to re-run: it resets the demo user.
 import bcrypt from 'bcryptjs';
 import { env } from '../src/config/env.js';
-import { connectDb, disconnectDb } from '../src/db.js';
-import { Counter } from '../src/models/Counter.js';
-import { Task } from '../src/models/Task.js';
-import { User } from '../src/models/User.js';
-import type { CreateTaskInput } from '../src/schemas/task.js';
-import { createTask } from '../src/services/task.service.js';
+import { connectDb, disconnectDb } from '../src/infra/database/connection.js';
+import { cache } from '../src/infra/cache/index.js';
+import { User } from '../src/modules/auth/user.model.js';
+import { Column } from '../src/modules/columns/column.model.js';
+import { Counter } from '../src/modules/tasks/counter.model.js';
+import { Task } from '../src/modules/tasks/task.model.js';
+import type { CreateTaskInput } from '../src/modules/tasks/tasks.schemas.js';
+import { createTask } from '../src/modules/tasks/tasks.service.js';
 
 const DEMO = { name: 'Demo User', email: 'demo@taskmanager.test', password: 'Demo@12345' };
 
@@ -22,6 +24,8 @@ const existing = await User.findOne({ email: DEMO.email });
 if (existing) {
   await Task.deleteMany({ owner: existing._id });
   await Counter.deleteOne({ _id: String(existing._id) });
+  await Column.deleteMany({ owner: existing._id });
+  await cache.invalidateUser(String(existing._id));
   await existing.deleteOne();
 }
 
@@ -55,4 +59,4 @@ const tasks: SeedTask[] = [
 for (const t of tasks) await createTask(String(user._id), { description: '', ...t });
 
 console.log(`Seeded ${tasks.length} tasks for ${DEMO.email} (password: ${DEMO.password})`);
-await disconnectDb();
+await Promise.all([disconnectDb(), cache.close()]);

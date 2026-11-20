@@ -1,13 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { Column } from '../src/models/Column.js';
-import { Task } from '../src/models/Task.js';
+import { Column } from '../src/modules/columns/column.model.js';
+import { Task } from '../src/modules/tasks/task.model.js';
 import { resetDb, signedInAgent, startDb, stopDb } from './helpers.js';
 
 beforeAll(startDb);
-beforeEach(async () => {
-  await resetDb();
-  await Column.deleteMany({});
-});
+beforeEach(resetDb);
 afterAll(stopDb);
 
 type Agent = Awaited<ReturnType<typeof signedInAgent>>['agent'];

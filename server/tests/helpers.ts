@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { connectDb, disconnectDb } from '../src/db.js';
-import { Task } from '../src/models/Task.js';
-import { User } from '../src/models/User.js';
+import { connectDb, disconnectDb } from '../src/infra/database/connection.js';
+import { User } from '../src/modules/auth/user.model.js';
+import { Column } from '../src/modules/columns/column.model.js';
+import { Task } from '../src/modules/tasks/task.model.js';
 
 export const app = createApp();
 
@@ -12,7 +13,7 @@ export async function startDb() {
 }
 
 export async function resetDb() {
-  await Promise.all([User.deleteMany({}), Task.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), Task.deleteMany({}), Column.deleteMany({})]);
 }
 
 export async function stopDb() {

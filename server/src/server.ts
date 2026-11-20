@@ -1,28 +1,31 @@
 import { createApp } from './app.js';
-import { env } from './config/env.js';
-import { connectDb, disconnectDb } from './db.js';
-import { logger } from './utils/logger.js';
+import { env, publicConfig } from './config/env.js';
+import { CONFIG_LOADED, LOG_MESSAGE, SERVER, SIGNAL } from './constants/index.js';
+import { cache } from './infra/cache/index.js';
+import { connectDb, disconnectDb } from './infra/database/connection.js';
+import { logger } from './infra/logger.js';
 
 async function main() {
+  logger.info(publicConfig(), CONFIG_LOADED);
   await connectDb(env.MONGODB_URI);
   const server = createApp().listen(env.PORT, () => {
-    logger.info(`API listening on http://localhost:${env.PORT}`);
+    logger.info(LOG_MESSAGE.LISTENING(env.PORT));
   });
 
   const shutdown = (signal: string) => {
-    logger.info(`${signal} received, shutting down`);
+    logger.info(LOG_MESSAGE.SHUTDOWN(signal));
     server.close(async () => {
-      await disconnectDb();
+      await Promise.allSettled([disconnectDb(), cache.close()]);
       process.exit(0);
     });
     // Don't hang forever on a stuck keep-alive connection.
-    setTimeout(() => process.exit(1), 10_000).unref();
+    setTimeout(() => process.exit(1), SERVER.SHUTDOWN_TIMEOUT_MS).unref();
   };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on(SIGNAL.SIGTERM, () => shutdown(SIGNAL.SIGTERM));
+  process.on(SIGNAL.SIGINT, () => shutdown(SIGNAL.SIGINT));
 }
 
 main().catch((err) => {
-  logger.error({ err }, 'Failed to start');
+  logger.error({ err }, LOG_MESSAGE.START_FAILED);
   process.exit(1);
 });
