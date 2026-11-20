@@ -3,16 +3,20 @@ import { ApiError } from '../api/http';
 import { useColumns } from '../api/columns';
 import { usePriorities } from '../api/priorities';
 import type { TaskInput } from '../api/types';
+import { ColorPicker } from './ColorPicker';
 import { DateTimeField } from './DateTimeField';
+import { FilePicker } from './FilePicker';
+import { NoteEditor } from './NoteEditor';
 import { CloseIcon } from './Icons';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: TaskInput) => Promise<unknown>;
+  /** Called with the new task's fields and the files chosen to go with it. */
+  onSubmit: (input: TaskInput, files: File[]) => Promise<unknown>;
 }
 
-const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null };
+const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, color: null };
 
 type Errors = Partial<Record<keyof TaskInput | 'form', string>>;
 
@@ -21,7 +25,7 @@ function validate(v: TaskInput): Errors {
   const title = v.title.trim();
   if (!title) errors.title = 'Give the task a title';
   else if (title.length > 120) errors.title = 'Keep the title under 120 characters';
-  if (v.description.length > 2000) errors.description = 'Keep the description under 2000 characters';
+  if (v.description.replace(/<[^>]*>/g, '').length > 5000) errors.description = 'Keep the notes under 5000 characters';
   return errors;
 }
 
@@ -32,6 +36,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   // Native <dialog>: focus trapping, Escape-to-close and the backdrop come for free.
   useEffect(() => {
@@ -44,6 +49,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
       setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo', priority: middle?.key ?? 'medium' });
       setErrors({});
       setSaving(false);
+      setFiles([]);
       el.showModal();
     }
     if (!open && el.open) el.close();
@@ -61,7 +67,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
 
     setSaving(true);
     try {
-      await onSubmit({ ...values, title: values.title.trim(), description: values.description.trim() });
+      await onSubmit({ ...values, title: values.title.trim() }, files);
       onClose();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -109,13 +115,22 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
           )}
         </label>
 
-        <label className="field">
+        <div className="field">
           <span>
-            Description <span className="muted">(optional)</span>
+            Notes <span className="muted">(optional)</span>
           </span>
-          <textarea rows={4} value={values.description} onChange={(e) => set('description', e.target.value)} aria-invalid={!!errors.description} />
+          <NoteEditor label="Notes" value={values.description} onChange={(html) => set('description', html)} minHeight={120} />
           {errors.description && <small className="field-error">{errors.description}</small>}
-        </label>
+        </div>
+
+        <FilePicker files={files} onChange={setFiles} />
+
+        <div className="field">
+          <span>
+            Card colour <span className="muted">(optional)</span>
+          </span>
+          <ColorPicker label="Card colour" value={values.color} allowDefault onChange={(color) => set('color', color)} />
+        </div>
 
         <div className="field-row">
           <label className="field">
@@ -152,7 +167,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Creating…' : 'Create'}
+            {saving ? (files.length ? 'Creating and uploading…' : 'Creating…') : 'Create'}
           </button>
         </div>
       </form>

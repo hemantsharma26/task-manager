@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { useAuth, useSignOut } from '../api/auth';
+import { useUploadFiles } from '../api/attachments';
 import { useCreateTask, useStats } from '../api/tasks';
 import { useSelectedIssue, useTaskFilters } from '../hooks/useTaskFilters';
 import { Avatar } from './Avatar';
@@ -23,6 +24,7 @@ export function AppShell() {
   const { selected, select } = useSelectedIssue();
   const [creating, setCreating] = useState(false);
   const create = useCreateTask();
+  const upload = useUploadFiles();
   const { notify } = useToast();
   const { search, pathname } = useLocation();
   const { filters, update, reset } = useTaskFilters();
@@ -123,8 +125,17 @@ export function AppShell() {
       <CreateDialog
         open={creating}
         onClose={() => setCreating(false)}
-        onSubmit={async (input) => {
+        onSubmit={async (input, files) => {
           const res = await create.mutateAsync(input);
+          if (files.length) {
+            // The task exists now, so it is never lost if a file fails: say exactly what did not go up.
+            try {
+              await upload.mutateAsync({ taskId: res.task.id, files });
+            } catch (e) {
+              notify('error', `${res.task.key} was created, but the files were not attached: ${e instanceof Error ? e.message : 'upload failed'}`);
+              return;
+            }
+          }
           notify('success', `${res.task.key} created`);
         }}
       />

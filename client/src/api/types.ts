@@ -23,6 +23,9 @@ export interface Task {
   dueDate: string | null;
   /** HH:MM (24 hour) on the due date, or null. */
   dueTime: string | null;
+  /** Hex colour of the card, or null for the default look. */
+  color: string | null;
+  attachments: Attachment[];
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +80,7 @@ export interface TaskInput {
   priority: TaskPriority;
   dueDate: string | null;
   dueTime: string | null;
+  color: string | null;
 }
 
 /** A priority. Which ones exist, their names, colours and order are up to the user. */
@@ -86,4 +90,14 @@ export interface Priority {
   name: string;
   /** Hex colour of the flag. */
   color: string;
+}
+
+export type AttachmentKind = 'image' | 'video' | 'pdf';
+
+export interface Attachment {
+  id: string;
+  name: string;
+  mime: string;
+  kind: AttachmentKind;
+  size: number;
 }

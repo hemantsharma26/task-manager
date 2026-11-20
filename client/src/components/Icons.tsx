@@ -103,3 +103,27 @@ export const DotsIcon = ({ size = 16 }: P) => (
     <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" />
   </svg>
 );
+
+export const PaperclipIcon = ({ size = 14 }: P) => (
+  <svg {...base(size)}>
+    <path d="M13 7.5l-5 5a3 3 0 01-4.2-4.2l5.4-5.4a2 2 0 112.8 2.8L6.7 11a1 1 0 01-1.4-1.4L10 5" />
+  </svg>
+);
+
+export const FileIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13" />
+  </svg>
+);
+
+export const PlayIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} fill="currentColor">
+    <path d="M5 3l8 5-8 5z" />
+  </svg>
+);
+
+export const UploadIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M8 11V2.5M4.5 6L8 2.5 11.5 6M2.5 13.5h11" />
+  </svg>
+);

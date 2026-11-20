@@ -41,7 +41,7 @@ let inFlightRefresh: Promise<boolean> | null = null;
  * it). Many requests failing at once share one refresh, and across browser tabs a lock makes them take turns, so two tabs
  * never present the same refresh token at the same moment.
  */
-function refreshAccess(): Promise<boolean> {
+export function refreshAccess(): Promise<boolean> {
   inFlightRefresh ??= (async () => {
     const run = async () => {
       try {

@@ -6,7 +6,10 @@ import { usePriorities } from '../api/priorities';
 import type { Task, TaskInput } from '../api/types';
 import { toneFor } from '../lib/tone';
 import { Avatar } from './Avatar';
+import { AttachmentGallery } from './AttachmentGallery';
+import { ColorPicker } from './ColorPicker';
 import { DateTimeField } from './DateTimeField';
+import { NoteEditor } from './NoteEditor';
 import { CloseIcon, TrashIcon } from './Icons';
 import { PriorityIcon } from './PriorityIcon';
 import { useToast } from './Toast';
@@ -107,7 +110,8 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
       <div className="issue-grid">
         <div className="issue-main">
           <EditableTitle task={task} onSave={(title) => save({ title })} />
-          <EditableDescription task={task} onSave={(description) => save({ description })} />
+          <EditableNote task={task} onSave={(description) => save({ description })} />
+          <AttachmentGallery task={task} />
         </div>
 
         <aside className="issue-side" aria-label="Details">
@@ -145,6 +149,11 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
             <dt>Due date</dt>
             <dd>
               <DateTimeField label="Due date" value={{ date: task.dueDate, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time })} />
+            </dd>
+
+            <dt>Card colour</dt>
+            <dd className="color-dd">
+              <ColorPicker label="Card colour" value={task.color} allowDefault onChange={(color) => save({ color })} />
             </dd>
 
             <dt>Owner</dt>
@@ -205,54 +214,51 @@ function EditableTitle({ task, onSave }: { task: Task; onSave: (title: string) =
   );
 }
 
-function EditableDescription({ task, onSave }: { task: Task; onSave: (description: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(task.description);
+/** The task's notepad. It saves by itself a moment after you stop typing, and when you click away. */
+function EditableNote({ task, onSave }: { task: Task; onSave: (html: string) => void }) {
+  const [html, setHtml] = useState(task.description);
+  const [state, setState] = useState<'saved' | 'saving' | 'editing'>('saved');
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const latest = useRef(task.description);
 
+  // Another copy of the task changed (a refetch): follow it, unless there are edits waiting to be saved.
   useEffect(() => {
-    if (!editing) setValue(task.description);
-  }, [task.description, editing]);
+    if (state === 'saved' && task.description !== html) {
+      setHtml(task.description);
+      latest.current = task.description;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.description]);
 
-  const commit = () => {
-    setEditing(false);
-    const next = value.trim();
-    if (next.length <= 2000 && next !== task.description) onSave(next);
+  const flush = (next: string) => {
+    clearTimeout(timer.current);
+    if (next === latest.current) return setState('saved');
+    latest.current = next;
+    setState('saving');
+    onSave(next);
+    setTimeout(() => setState('saved'), 600);
   };
+
+  useEffect(() => () => clearTimeout(timer.current), []);
 
   return (
     <section className="issue-desc">
-      <h3>Description</h3>
-      {editing ? (
-        <>
-          <textarea
-            autoFocus
-            rows={7}
-            value={value}
-            maxLength={2000}
-            aria-label="Description"
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.stopPropagation();
-                setValue(task.description);
-                setEditing(false);
-              }
-            }}
-          />
-          <div className="quick-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={commit}>
-              Save
-            </button>
-            <button type="button" className="btn btn-subtle btn-sm" onClick={() => { setValue(task.description); setEditing(false); }}>
-              Cancel
-            </button>
-          </div>
-        </>
-      ) : (
-        <button type="button" className={`desc-view ${task.description ? '' : 'desc-empty'}`} onClick={() => setEditing(true)}>
-          {task.description || 'Add a description…'}
-        </button>
-      )}
+      <h3>
+        Notes <span className={`save-state save-${state}`}>{state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : 'Editing…'}</span>
+      </h3>
+      <NoteEditor
+        label="Notes"
+        value={html}
+        placeholder="Write your notes here: headings, lists, colours, fonts…"
+        minHeight={200}
+        onChange={(next) => {
+          setHtml(next);
+          setState('editing');
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => flush(next), 1200);
+        }}
+        onBlur={() => flush(html)}
+      />
     </section>
   );
 }

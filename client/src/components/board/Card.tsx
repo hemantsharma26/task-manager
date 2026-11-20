@@ -7,7 +7,8 @@ import { toneFor } from '../../lib/tone';
 import type { Task } from '../../api/types';
 import { Avatar } from '../Avatar';
 import { DueBadge } from '../DueBadge';
-import { CheckIcon, GripIcon } from '../Icons';
+import { mix } from '../../lib/color';
+import { CheckIcon, GripIcon, PaperclipIcon } from '../Icons';
 import { PriorityIcon } from '../PriorityIcon';
 
 interface CardBodyProps {
@@ -40,6 +41,11 @@ export function CardBody({ task, today, owner }: CardBodyProps) {
             </span>
           )}
           <span className="card-key">{task.key}</span>
+          {task.attachments?.length > 0 && (
+            <span className="card-clip" title={`${task.attachments.length} ${task.attachments.length === 1 ? 'attachment' : 'attachments'}`}>
+              <PaperclipIcon size={13} /> {task.attachments.length}
+            </span>
+          )}
         </span>
         <Avatar name={owner} size={22} />
       </div>
@@ -75,7 +81,14 @@ export const Card = memo(function Card({ task, today, owner, onOpen, enter, inde
   // the card is pure native scrolling. Mouse and keyboard still work from the whole card.
   const { onTouchStart, ...cardListeners } = listeners ?? {};
 
-  const style: CSSProperties = { transform: CSS.Transform.toString(transform), transition, ['--i' as string]: Math.min(index, 8), ['--accent' as string]: accent };
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ['--i' as string]: Math.min(index, 8),
+    ['--accent' as string]: accent,
+    // A colour chosen for this task tints the whole card and its edge.
+    ...(task.color ? { ['--task-color' as string]: task.color, ['--task-tint' as string]: mix(task.color, '#ffffff', 0.88) } : {}),
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     cardListeners.onKeyDown?.(e);
@@ -87,6 +100,7 @@ export const Card = memo(function Card({ task, today, owner, onOpen, enter, inde
       ref={setNodeRef}
       style={style}
       data-accent={accent ? '' : undefined}
+      data-colored={task.color ? '' : undefined}
       className={`card ${enter ? `card-enter-${enter}` : ''} ${isDragging ? 'card-ghost' : ''} ${pending ? 'card-pending' : ''} ${done ? 'card-is-done' : ''}`}
       {...attributes}
       {...cardListeners}
