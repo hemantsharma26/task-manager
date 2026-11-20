@@ -1,4 +1,4 @@
-# Only MongoDB. Run the API and the web app with `npm run dev`.
+# MongoDB and Redis for local development. Run the API and the web app with `npm run dev`.
 services:
   mongo:
     image: mongo:7
@@ -6,6 +6,11 @@ services:
       - '27017:27017'
     volumes:
       - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
 
 volumes:
   mongo-data:

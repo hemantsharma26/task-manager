@@ -11,6 +11,11 @@ async function main() {
   const server = createApp().listen(env.PORT, () => {
     logger.info(LOG_MESSAGE.LISTENING(env.PORT));
   });
+  // Slow-client protection ("slowloris"): headers and the whole request must arrive in a sensible time, and idle
+  // keep-alive connections are closed, so a handful of dribbling sockets cannot hold the server hostage.
+  server.headersTimeout = SERVER.HEADERS_TIMEOUT_MS;
+  server.requestTimeout = SERVER.REQUEST_TIMEOUT_MS;
+  server.keepAliveTimeout = SERVER.KEEP_ALIVE_TIMEOUT_MS;
 
   const shutdown = (signal: string) => {
     logger.info(LOG_MESSAGE.SHUTDOWN(signal));

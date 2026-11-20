@@ -1,8 +1,9 @@
 // Creates a demo account with a realistic spread of tasks. Safe to re-run: it resets the demo user.
-import bcrypt from 'bcryptjs';
 import { env } from '../src/config/env.js';
 import { connectDb, disconnectDb } from '../src/infra/database/connection.js';
 import { cache } from '../src/infra/cache/index.js';
+import { hashPassword } from '../src/modules/auth/password.service.js';
+import { Session } from '../src/modules/auth/session.model.js';
 import { User } from '../src/modules/auth/user.model.js';
 import { Column } from '../src/modules/columns/column.model.js';
 import { Counter } from '../src/modules/tasks/counter.model.js';
@@ -10,7 +11,7 @@ import { Task } from '../src/modules/tasks/task.model.js';
 import type { CreateTaskInput } from '../src/modules/tasks/tasks.schemas.js';
 import { createTask } from '../src/modules/tasks/tasks.service.js';
 
-const DEMO = { name: 'Demo User', email: 'demo@taskmanager.test', password: 'Demo@12345' };
+const DEMO = { name: 'Demo User', email: 'demo@taskmanager.test', password: 'Demo-Board-2026!' };
 
 const isoOffset = (days: number) => {
   const d = new Date();
@@ -25,6 +26,7 @@ if (existing) {
   await Task.deleteMany({ owner: existing._id });
   await Counter.deleteOne({ _id: String(existing._id) });
   await Column.deleteMany({ owner: existing._id });
+  await Session.deleteMany({ user: existing._id });
   await cache.invalidateUser(String(existing._id));
   await existing.deleteOne();
 }
@@ -32,7 +34,7 @@ if (existing) {
 const user = await User.create({
   name: DEMO.name,
   email: DEMO.email,
-  passwordHash: await bcrypt.hash(DEMO.password, 12),
+  passwordHash: await hashPassword(DEMO.password),
 });
 
 type SeedTask = Pick<CreateTaskInput, 'title' | 'priority' | 'status' | 'dueDate'> & { description?: string };

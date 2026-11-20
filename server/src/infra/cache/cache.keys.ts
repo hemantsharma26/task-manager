@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { CACHE_KEY_SEPARATOR, CACHE_NAMESPACE, CACHE_PREFIX, CACHE_SCHEMA_VERSION, HASH } from '../../constants/index.js';
+import { AUTH_CACHE, CACHE_KEY_SEPARATOR, CACHE_NAMESPACE, CACHE_PREFIX, CACHE_SCHEMA_VERSION, HASH } from '../../constants/index.js';
 
 // Every key the app writes is built here, and nowhere else:
 //
@@ -23,7 +23,18 @@ function hashOf(value: unknown): string {
 
 const userScope = (userId: string, version: number) => join(CACHE_NAMESPACE.USER, userId, `v${version}`);
 
+const authKey = (kind: string, id: string) => join(CACHE_NAMESPACE.AUTH, kind, id);
+/** Short stable digest, so emails and IPs never appear in Redis in clear text. */
+export const digest = (value: string) => hashOf(value);
+
 export const cacheKeys = {
+  // ----- security state (see the auth module)
+  deniedSession: (sessionId: string) => authKey(AUTH_CACHE.SESSION_DENYLIST, sessionId),
+  tokensValidAfter: (userId: string) => authKey(AUTH_CACHE.TOKENS_VALID_AFTER, userId),
+  loginFailuresPair: (email: string, ip: string) => authKey(AUTH_CACHE.LOGIN_PAIR, digest(`${email}|${ip}`)),
+  loginFailuresEmail: (email: string) => authKey(AUTH_CACHE.LOGIN_EMAIL, digest(email)),
+  registrationsByIp: (ip: string) => authKey(AUTH_CACHE.REGISTER_IP, digest(ip)),
+
   version: (userId: string) => join(CACHE_NAMESPACE.USER, userId, CACHE_NAMESPACE.VERSION),
   taskList: (userId: string, version: number, query: unknown) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.TASK_LIST}${CACHE_KEY_SEPARATOR}${hashOf(query)}`,
   taskStats: (userId: string, version: number, query: unknown) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.TASK_STATS}${CACHE_KEY_SEPARATOR}${hashOf(query)}`,

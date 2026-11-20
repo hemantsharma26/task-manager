@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { ERROR_CODE, ERROR_MESSAGE, HTTP_STATUS, LOG_MESSAGE } from '../../constants/index.js';
+import { ERROR_CODE, ERROR_MESSAGE, HEADER, HTTP_STATUS, LOG_MESSAGE } from '../../constants/index.js';
 import { logger } from '../../infra/logger.js';
 import { HttpError } from '../errors/http-error.js';
 
@@ -22,6 +22,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   }
 
   if (err instanceof HttpError) {
+    if (err.retryAfterSeconds) res.set(HEADER.RETRY_AFTER, String(err.retryAfterSeconds));
     res.status(err.status).json({
       error: { code: err.code, message: err.message, ...(err.details !== undefined && { details: err.details }) },
     });

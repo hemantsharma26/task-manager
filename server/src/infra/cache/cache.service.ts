@@ -65,6 +65,24 @@ export class CacheService {
     }
   }
 
+  // Small helpers for short-lived security state. Unlike `remember`, these are used for decisions, so the
+  // caller chooses what a failure means (see each use in the auth module).
+  getRaw(key: string) {
+    return this.store.get(key);
+  }
+  setRaw(key: string, value: string, ttlSeconds: number) {
+    return this.store.set(key, value, ttlSeconds);
+  }
+  incrementWithin(key: string, ttlSeconds: number) {
+    return this.store.increment(key, ttlSeconds);
+  }
+  secondsLeft(key: string) {
+    return this.store.ttl(key);
+  }
+  deleteKeys(...keys: string[]) {
+    return this.store.delete(...keys);
+  }
+
   close() {
     return this.store.close();
   }

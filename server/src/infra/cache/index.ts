@@ -27,10 +27,17 @@ class DisabledStore implements CacheStore {
   async increment() {
     return 0;
   }
+  async ttl() {
+    return 0;
+  }
   async delete() {}
   async close() {}
 }
 
-export const cache = new CacheService(cacheEnabled ? createStore() : new DisabledStore(), logger);
+const store = cacheEnabled ? createStore() : new DisabledStore();
+export const cache = new CacheService(store, logger);
+
+/** Shared Redis client, when there is one. Rate limiting uses it so limits hold across several instances. */
+export const sharedRedis = store instanceof RedisStore ? store.client : undefined;
 
 logger.info(LOG_MESSAGE.CACHE_STORE(cache.kind));

@@ -10,6 +10,17 @@ export const CACHE_NAMESPACE = {
   TASK_LIST: 'tasks:list',
   TASK_STATS: 'tasks:stats',
   COLUMNS: 'columns',
+  AUTH: 'auth',
+} as const;
+
+// Short-lived security state kept in the cache store (Redis when configured)
+export const AUTH_CACHE = {
+  SESSION_DENYLIST: 'revoked-session',
+  TOKENS_VALID_AFTER: 'valid-after',
+  LOGIN_PAIR: 'login-fail:pair',
+  LOGIN_EMAIL: 'login-fail:email',
+  REGISTER_IP: 'register:ip',
+  FLAG: '1',
 } as const;
 
 export const CACHE_TTL_SECONDS = {
@@ -25,6 +36,7 @@ export const REDIS = {
   RETRY_DELAY_STEP_MS: 200,
   RETRY_DELAY_MAX_MS: 2000,
   SET_WITH_EXPIRY: 'EX',
+  RATE_LIMIT_PREFIX: 'tm:v1:rl:',
 } as const;
 
 export const CACHE_STORE = { REDIS: 'redis', MEMORY: 'memory' } as const;

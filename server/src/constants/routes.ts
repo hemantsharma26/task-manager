@@ -2,7 +2,18 @@
 export const ROUTE = {
   API: '/api',
   HEALTH: '/health',
-  AUTH: { BASE: '/auth', REGISTER: '/register', LOGIN: '/login', LOGOUT: '/logout', ME: '/me' },
+  AUTH: {
+    BASE: '/auth',
+    REGISTER: '/register',
+    LOGIN: '/login',
+    LOGOUT: '/logout',
+    LOGOUT_ALL: '/logout-all',
+    REFRESH: '/refresh',
+    ME: '/me',
+    PASSWORD: '/password',
+    SESSIONS: '/sessions',
+    SESSION_BY_ID: '/sessions/:id',
+  },
   TASKS: { BASE: '/tasks', ROOT: '/', STATS: '/stats', BY_ID: '/:id', MOVE: '/:id/move' },
   COLUMNS: { BASE: '/columns', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
 } as const;

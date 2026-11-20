@@ -4,6 +4,7 @@ import { useAuth, useSignOut } from '../api/auth';
 import { useCreateTask, useStats } from '../api/tasks';
 import { useSelectedIssue, useTaskFilters } from '../hooks/useTaskFilters';
 import { Avatar } from './Avatar';
+import { AccountDialog } from './AccountDialog';
 import { CreateDialog } from './CreateDialog';
 import { BoardIcon, FlagIcon, ListIcon, PlusIcon } from './Icons';
 import { IssueDialog } from './IssueDialog';
@@ -26,6 +27,7 @@ export function AppShell() {
   const { filters, update, reset } = useTaskFilters();
   const { data: stats } = useStats();
   const [menu, setMenu] = useState(false);
+  const [account, setAccount] = useState(false);
 
   if (!user) return null;
 
@@ -58,6 +60,9 @@ export function AppShell() {
                   <strong>{user.name}</strong>
                   <span className="muted">{user.email}</span>
                 </div>
+                <button type="button" role="menuitem" className="menu-item" onClick={() => { setMenu(false); setAccount(true); }}>
+                  Account security
+                </button>
                 <button type="button" role="menuitem" className="menu-item" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
                   Sign out
                 </button>
@@ -114,6 +119,7 @@ export function AppShell() {
           notify('success', `${res.task.key} created`);
         }}
       />
+      <AccountDialog open={account} onClose={() => setAccount(false)} />
       <IssueDialog id={selected} owner={user.name} onClose={() => select(null)} />
     </div>
   );

@@ -2,6 +2,7 @@ export * from './app.js';
 export * from './auth.js';
 export * from './cache.js';
 export * from './columns.js';
+export * from './common-passwords.js';
 export * from './errors.js';
 export * from './http.js';
 export * from './logging.js';

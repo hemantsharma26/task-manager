@@ -3,7 +3,9 @@ import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 import {
   API_RATE_LIMIT,
+  AUTH_DEFAULTS,
   AUTH_RATE_LIMIT,
+  WRITE_RATE_LIMIT,
   BOOLEAN_ENV,
   CACHE_TTL_SECONDS,
   DEFAULTS,
@@ -11,7 +13,6 @@ import {
   LOG_MESSAGE,
   NODE_ENV,
   SERVER,
-  SESSION,
   VALIDATION_MESSAGE,
 } from '../constants/index.js';
 
@@ -42,12 +43,26 @@ const schema = z.object({
 
   // --- auth
   JWT_SECRET: z.string().min(DEFAULTS.JWT_SECRET_MIN_LENGTH, VALIDATION_MESSAGE.ENV_JWT_SECRET_LENGTH(DEFAULTS.JWT_SECRET_MIN_LENGTH)),
-  JWT_EXPIRES_IN: z.string().default(DEFAULTS.JWT_EXPIRES_IN),
-  SESSION_COOKIE_DAYS: positiveInt(SESSION.DAYS),
+  // A second secret, used only to "pepper" passwords before hashing. Different from JWT_SECRET on purpose.
+  PASSWORD_PEPPER: z.string().min(DEFAULTS.PEPPER_MIN_LENGTH, VALIDATION_MESSAGE.ENV_PEPPER_LENGTH(DEFAULTS.PEPPER_MIN_LENGTH)),
+  ACCESS_TOKEN_MINUTES: positiveInt(AUTH_DEFAULTS.ACCESS_TOKEN_MINUTES),
+  // A session ends after this many days without use, or SESSION_MAX_DAYS after sign-in, whichever comes first.
+  REFRESH_TOKEN_DAYS: positiveInt(AUTH_DEFAULTS.REFRESH_TOKEN_DAYS),
+  SESSION_MAX_DAYS: positiveInt(AUTH_DEFAULTS.SESSION_MAX_DAYS),
+  LOGIN_MAX_ATTEMPTS: positiveInt(AUTH_DEFAULTS.LOGIN_MAX_ATTEMPTS),
+  LOGIN_LOCKOUT_MINUTES: positiveInt(AUTH_DEFAULTS.LOGIN_LOCKOUT_MINUTES),
+  LOGIN_EMAIL_MAX_ATTEMPTS: positiveInt(AUTH_DEFAULTS.LOGIN_EMAIL_MAX_ATTEMPTS),
+  LOGIN_EMAIL_WINDOW_MINUTES: positiveInt(AUTH_DEFAULTS.LOGIN_EMAIL_WINDOW_MINUTES),
+  REGISTER_MAX_PER_IP: positiveInt(AUTH_DEFAULTS.REGISTER_MAX_PER_IP),
+  REGISTER_WINDOW_MINUTES: positiveInt(AUTH_DEFAULTS.REGISTER_WINDOW_MINUTES),
   // Mark the session cookie Secure. Defaults to on in production; set false only if you serve over plain http
   // (a browser silently drops Secure cookies on http).
   COOKIE_SECURE: bool.optional(),
   CLIENT_ORIGIN: z.string().default(DEFAULTS.CLIENT_ORIGIN),
+  // Extra origins allowed to send state-changing requests in production (comma separated). The app's own origin is always allowed.
+  ALLOWED_ORIGINS: z.string().default(''),
+  // Send Strict-Transport-Security. Turn on only when the app itself is served over HTTPS (normally nginx does this).
+  HSTS_ENABLED: bool.default(BOOLEAN_ENV.FALSE),
 
   // --- cache
   REDIS_URL: z.string().optional(),
@@ -57,8 +72,12 @@ const schema = z.object({
   CACHE_TTL_COLUMNS_SECONDS: positiveInt(CACHE_TTL_SECONDS.COLUMNS),
 
   // --- rate limiting
+  // Off only in the automated tests, which sign in hundreds of times from one address.
+  RATE_LIMITING_ENABLED: bool.default(BOOLEAN_ENV.TRUE),
   RATE_LIMIT_API_MAX: positiveInt(API_RATE_LIMIT.MAX),
   RATE_LIMIT_API_WINDOW_SECONDS: positiveInt(API_RATE_LIMIT.WINDOW_MS / 1000),
+  RATE_LIMIT_WRITE_MAX: positiveInt(WRITE_RATE_LIMIT.MAX),
+  RATE_LIMIT_WRITE_WINDOW_SECONDS: positiveInt(WRITE_RATE_LIMIT.WINDOW_MS / 1000),
   RATE_LIMIT_AUTH_MAX: positiveInt(AUTH_RATE_LIMIT.MAX),
   RATE_LIMIT_AUTH_WINDOW_SECONDS: positiveInt(AUTH_RATE_LIMIT.WINDOW_MS / 1000),
 });
@@ -73,9 +92,22 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// A secret copied straight from .env.example is public knowledge. Refuse to run in production with one.
+if (env.NODE_ENV === NODE_ENV.PRODUCTION) {
+  for (const name of ['JWT_SECRET', 'PASSWORD_PEPPER'] as const) {
+    if (env[name].toLowerCase().startsWith(DEFAULTS.PLACEHOLDER_SECRET_PREFIX)) {
+      console.error(LOG_MESSAGE.SECURITY_PLACEHOLDER_SECRET(name));
+      process.exit(1);
+    }
+  }
+}
+export const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+export const hstsEnabled = env.HSTS_ENABLED === BOOLEAN_ENV.TRUE;
 export const isProd = env.NODE_ENV === NODE_ENV.PRODUCTION;
 export const isTest = env.NODE_ENV === NODE_ENV.TEST;
 export const cookieSecure = env.COOKIE_SECURE ? env.COOKIE_SECURE === BOOLEAN_ENV.TRUE : isProd;
+export const rateLimitingEnabled = env.RATE_LIMITING_ENABLED === BOOLEAN_ENV.TRUE;
 export const cacheEnabled = env.CACHE_ENABLED === BOOLEAN_ENV.TRUE;
 
 /** The settings that are safe to print at boot: no secrets, and credentials in URLs are masked. */

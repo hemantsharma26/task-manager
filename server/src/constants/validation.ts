@@ -1,7 +1,14 @@
 export const VALIDATION_MESSAGE = {
   EMAIL: 'Enter a valid email address',
   NAME_REQUIRED: 'Name is required',
-  PASSWORD_MIN: 'Password must be at least 8 characters',
+  PASSWORD_MIN: (min: number) => `Use at least ${min} characters`,
+  PASSWORD_MAX: (max: number) => `Use at most ${max} characters`,
+  PASSWORD_CLASSES: 'Mix at least three of: lowercase, uppercase, numbers, symbols (or use a passphrase of 16+ characters)',
+  PASSWORD_COMMON: 'That password is too common. Choose something harder to guess',
+  PASSWORD_PERSONAL: 'Do not use your name or email in your password',
+  PASSWORD_REPEATED: 'Do not use one repeated character or a simple sequence',
+  EMAIL_TOO_LONG: (max: number) => `Email must be at most ${max} characters`,
+  NAME_CONTROL_CHARS: 'Name contains characters that are not allowed',
   PASSWORD_REQUIRED: 'Password is required',
   TITLE_REQUIRED: 'Title is required',
   TITLE_TOO_LONG: (max: number) => `Title is too long (max ${max})`,
@@ -13,6 +20,7 @@ export const VALIDATION_MESSAGE = {
   COLUMN_NAME_REQUIRED: 'Give the column a name',
   COLUMN_NAME_TOO_LONG: (max: number) => `Keep the name under ${max} characters`,
   ENV_REQUIRED_MONGODB_URI: 'MONGODB_URI is required',
+  ENV_PEPPER_LENGTH: (min: number) => `PASSWORD_PEPPER must be at least ${min} characters`,
   ENV_JWT_SECRET_LENGTH: (min: number) => `JWT_SECRET must be at least ${min} characters`,
 } as const;
 
@@ -23,4 +31,10 @@ export const PATTERN = {
   NON_ALPHANUMERIC_RUN: /[^a-z0-9]+/g,
   EDGE_UNDERSCORES: /^_+|_+$/g,
   NEWLINE: /\n/g,
+  CONTROL_CHARS: /[\u0000-\u001f\u007f]/,
+  LOWER: /[a-z]/,
+  UPPER: /[A-Z]/,
+  DIGIT: /[0-9]/,
+  SYMBOL: /[^a-zA-Z0-9]/,
+  NON_ALPHANUMERIC: /[^a-z0-9]/g,
 } as const;

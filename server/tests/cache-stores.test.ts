@@ -105,6 +105,7 @@ describe('CacheService', () => {
       get: async () => { throw new Error('connection lost'); },
       set: async () => { throw new Error('connection lost'); },
       increment: async () => { throw new Error('connection lost'); },
+      ttl: async () => { throw new Error('connection lost'); },
       delete: async () => { throw new Error('connection lost'); },
       close: async () => {},
     };

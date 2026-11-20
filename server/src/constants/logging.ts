@@ -8,6 +8,7 @@ export const LOG_MESSAGE = {
   CACHE_REDIS_ERROR: 'Redis error (the app keeps working without the cache)',
   CACHE_READ_FAILED: 'Cache read failed, loading from the database',
   CACHE_WRITE_FAILED: 'Cache write failed',
+  SECURITY_PLACEHOLDER_SECRET: (name: string) => `${name} still has the placeholder value from .env.example. Set a real random secret before running in production.`,
   CACHE_INVALIDATE_FAILED: 'Cache invalidation failed; entries expire on their own within their TTL',
   ENV_INVALID: 'Invalid environment configuration:',
 } as const;

@@ -5,7 +5,7 @@ import type { CacheStore } from './cache.types.js';
 
 export class RedisStore implements CacheStore {
   readonly kind = CACHE_STORE.REDIS;
-  private readonly client: Redis;
+  readonly client: Redis;
 
   constructor(url: string) {
     this.client = new Redis(url, {
@@ -27,8 +27,15 @@ export class RedisStore implements CacheStore {
     await this.client.set(key, value, REDIS.SET_WITH_EXPIRY, ttlSeconds);
   }
 
-  increment(key: string) {
-    return this.client.incr(key);
+  async increment(key: string, ttlSeconds?: number) {
+    const value = await this.client.incr(key);
+    // Only the first increment starts the clock, so later attempts do not push the window forward.
+    if (value === 1 && ttlSeconds) await this.client.expire(key, ttlSeconds);
+    return value;
+  }
+
+  async ttl(key: string) {
+    return Math.max(0, await this.client.ttl(key));
   }
 
   async delete(...keys: string[]) {

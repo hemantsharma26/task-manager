@@ -23,13 +23,17 @@ export async function stopDb() {
 
 let counter = 0;
 
+/** Passes the password policy: long enough, three character classes, nothing common or personal. */
+export const STRONG_PASSWORD = 'Tr1cky-Harbor-Lamp!';
+
+
 /** Registers a fresh user and returns a supertest agent that carries its session cookie. */
 export async function signedInAgent(overrides: { email?: string; password?: string; name?: string } = {}) {
   const agent = request.agent(app);
   const email = overrides.email ?? `user${++counter}@example.com`;
   const res = await agent
     .post('/api/auth/register')
-    .send({ name: overrides.name ?? 'Test User', email, password: overrides.password ?? 'correct-horse-9' });
+    .send({ name: overrides.name ?? 'Test User', email, password: overrides.password ?? STRONG_PASSWORD });
   if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { agent, user: res.body.user as { id: string; email: string; name: string } };
 }

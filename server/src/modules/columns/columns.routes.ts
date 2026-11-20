@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { ROUTE } from '../../constants/index.js';
+import { writeRateLimit } from '../../shared/middleware/rate-limit.js';
 import { requireAuth } from '../../shared/middleware/require-auth.js';
 import * as controller from './columns.controller.js';
 
 export const columnRouter = Router();
 
-columnRouter.use(requireAuth);
+columnRouter.use(requireAuth, writeRateLimit);
 
 columnRouter.get(ROUTE.COLUMNS.ROOT, controller.list);
 columnRouter.post(ROUTE.COLUMNS.ROOT, controller.create);

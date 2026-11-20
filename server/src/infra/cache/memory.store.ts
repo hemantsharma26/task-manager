@@ -33,10 +33,19 @@ export class MemoryStore implements CacheStore {
     this.entries.set(key, { value, expiresAt: this.now() + ttlSeconds * 1000 });
   }
 
-  async increment(key: string) {
-    const next = Number(this.peek(key) ?? 0) + 1;
-    this.entries.set(key, { value: String(next) });
+  async increment(key: string, ttlSeconds?: number) {
+    const current = this.peek(key);
+    const next = Number(current ?? 0) + 1;
+    // The window starts at the first increment and is not extended by later ones.
+    const expiresAt = current === null ? (ttlSeconds ? this.now() + ttlSeconds * 1000 : undefined) : this.entries.get(key)?.expiresAt;
+    this.entries.set(key, { value: String(next), expiresAt });
     return next;
+  }
+
+  async ttl(key: string) {
+    if (this.peek(key) === null) return 0;
+    const expiresAt = this.entries.get(key)?.expiresAt;
+    return expiresAt === undefined ? 0 : Math.max(0, Math.ceil((expiresAt - this.now()) / 1000));
   }
 
   async delete(...keys: string[]) {
