@@ -44,6 +44,9 @@ const tasks: SeedTask[] = [
   { title: 'Set up CI cache for node_modules', description: 'Build time is 6 min, should drop below 3.', priority: 'medium', status: 'done', dueDate: isoOffset(-4) },
   { title: 'Upgrade MongoDB driver', priority: 'medium', status: 'done', dueDate: isoOffset(-7) },
   { title: 'Plan sprint retrospective', priority: 'low', status: 'in_progress', dueDate: isoOffset(3) },
+  { title: 'Payment webhook fails on retry', description: 'Duplicate events create two invoices when the gateway retries.', priority: 'high', status: 'issue', dueDate: isoOffset(0) },
+  { title: 'Staging build is red after the Node upgrade', priority: 'medium', status: 'issue', dueDate: isoOffset(2) },
+  { title: 'Rewrite onboarding emails after review', description: 'Legal asked for shorter copy and an unsubscribe link.', priority: 'medium', status: 'rework', dueDate: isoOffset(4) },
   { title: 'Reply to vendor about invoice mismatch', priority: 'high', status: 'todo', dueDate: isoOffset(-1) },
   { title: 'Read the Postgres indexing chapter', priority: 'low', status: 'todo', dueDate: null },
 ];

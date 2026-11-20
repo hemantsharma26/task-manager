@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/http';
 import { useDeleteTask, useTask, useUpdateTask } from '../api/tasks';
-import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, type Task, type TaskInput, type TaskPriority, type TaskStatus } from '../api/types';
+import { useColumnLookup } from '../api/columns';
+import { PRIORITIES, PRIORITY_LABEL, type Task, type TaskInput, type TaskPriority } from '../api/types';
+import { toneFor } from '../lib/tone';
 import { Avatar } from './Avatar';
 import { CloseIcon, PriorityIcon, TrashIcon } from './Icons';
 import { useToast } from './Toast';
@@ -42,6 +44,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const { notify } = useToast();
+  const { columns, isDone } = useColumnLookup();
   const [confirming, setConfirming] = useState(false);
 
   const save = (changes: Partial<TaskInput>) =>
@@ -109,14 +112,15 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
             <dt>Status</dt>
             <dd>
               <select
-                className={`select select-status select-${task.status}`}
+                className="select select-status"
+                style={{ background: toneFor(task.status, isDone(task.status)).bg, color: toneFor(task.status, isDone(task.status)).fg }}
                 value={task.status}
                 aria-label="Status"
-                onChange={(e) => save({ status: e.target.value as TaskStatus })}
+                onChange={(e) => save({ status: e.target.value })}
               >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABEL[s]}
+                {columns.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.name}
                   </option>
                 ))}
               </select>

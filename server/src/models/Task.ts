@@ -1,9 +1,9 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
-export const TASK_STATUSES = ['todo', 'in_progress', 'done'] as const;
 export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 
-export type TaskStatus = (typeof TASK_STATUSES)[number];
+/** The key of one of the user's board columns (see Column). */
+export type TaskStatus = string;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export interface ITask {
@@ -30,7 +30,7 @@ const taskSchema = new Schema<ITask>(
     rank: { type: Number, required: true },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, trim: true, maxlength: 2000, default: '' },
-    status: { type: String, enum: TASK_STATUSES, default: 'todo' },
+    status: { type: String, required: true },
     priority: { type: String, enum: TASK_PRIORITIES, default: 'medium' },
     dueDate: { type: String, default: null, match: /^\d{4}-\d{2}-\d{2}$/ },
     completedAt: { type: Date, default: null },
@@ -45,13 +45,6 @@ taskSchema.index({ owner: 1, number: 1 }, { unique: true });
 taskSchema.index({ owner: 1, status: 1, rank: 1, _id: 1 }); // board columns
 taskSchema.index({ owner: 1, createdAt: -1, _id: -1 }); // list view, newest first
 taskSchema.index({ owner: 1, status: 1, dueDate: 1 }); // overdue / due filters
-
-// Keep completedAt in step with status. Tasks are always changed through load + save()
-// (never findOneAndUpdate), so this hook cannot be bypassed.
-taskSchema.pre('save', function () {
-  if (!this.isModified('status')) return;
-  this.completedAt = this.status === 'done' ? new Date() : null;
-});
 
 export type TaskDoc = HydratedDocument<ITask>;
 export const Task = model<ITask>('Task', taskSchema);

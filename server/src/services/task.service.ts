@@ -3,6 +3,7 @@ import { nextIssueNumber } from '../models/Counter.js';
 import { Task, type ITask, type TaskDoc, type TaskStatus } from '../models/Task.js';
 import type { CreateTaskInput, ListQuery, MoveTaskInput, UpdateTaskInput } from '../schemas/task.js';
 import { HttpError } from '../utils/httpError.js';
+import { columnsFor } from './column.service.js';
 import { RANK_STEP, rankBetween } from '../utils/rank.js';
 
 type TaskLike = Omit<ITask, 'owner'> & { _id: unknown; owner: unknown };
@@ -31,7 +32,10 @@ function addDays(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function buildFilter(userId: string, q: Pick<ListQuery, 'status' | 'priority' | 'due' | 'q' | 'today'>) {
+/** Keys of the user's "done" columns: tasks in them are finished, so they are never overdue. */
+const doneKeysOf = (columns: { key: string; isDone: boolean }[]) => columns.filter((c) => c.isDone).map((c) => c.key);
+
+function buildFilter(userId: string, q: Pick<ListQuery, 'status' | 'priority' | 'due' | 'q' | 'today'>, doneKeys: string[]) {
   const today = q.today ?? todayUtc();
   const filter: Record<string, unknown> = { owner: new Types.ObjectId(userId) };
 
@@ -46,7 +50,7 @@ function buildFilter(userId: string, q: Pick<ListQuery, 'status' | 'priority' | 
   switch (q.due) {
     case 'overdue':
       filter.dueDate = { $lt: today };
-      filter.status = q.status ?? { $ne: 'done' }; // a finished task is never "overdue"
+      filter.status = q.status ?? { $nin: doneKeys }; // a finished task is never "overdue"
       break;
     case 'today':
       filter.dueDate = today;
@@ -72,7 +76,8 @@ const PRIORITY_RANK = {
 };
 
 export async function listTasks(userId: string, query: ListQuery) {
-  const filter = buildFilter(userId, query);
+  const doneKeys = query.due === 'overdue' ? doneKeysOf(await columnsFor(userId)) : [];
+  const filter = buildFilter(userId, query, doneKeys);
   const dir = query.order === 'asc' ? 1 : -1;
   const skip = (query.page - 1) * query.limit;
 
@@ -130,13 +135,15 @@ function computedSortPipeline(filter: Record<string, unknown>, sort: 'dueDate' |
 
 export async function getStats(userId: string, today = todayUtc()) {
   const owner = new Types.ObjectId(userId);
-  const [byStatus, overdue] = await Promise.all([
+  const columns = await columnsFor(userId);
+  const [grouped, overdue] = await Promise.all([
     Task.aggregate<{ _id: string; n: number }>([{ $match: { owner } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
-    Task.countDocuments({ owner, status: { $ne: 'done' }, dueDate: { $lt: today } }),
+    Task.countDocuments({ owner, status: { $nin: doneKeysOf(columns) }, dueDate: { $lt: today } }),
   ]);
-  const count = (s: string) => byStatus.find((b) => b._id === s)?.n ?? 0;
-  const stats = { todo: count('todo'), in_progress: count('in_progress'), done: count('done') };
-  return { ...stats, total: stats.todo + stats.in_progress + stats.done, overdue };
+  // Every current column gets a number (0 if empty), keyed by the column key.
+  const byStatus = Object.fromEntries(columns.map((c) => [c.key, grouped.find((g) => g._id === c.key)?.n ?? 0]));
+  const total = Object.values(byStatus).reduce((x, y) => x + y, 0);
+  return { byStatus, total, overdue };
 }
 
 // A malformed id and a missing task look identical to the caller, and a task that
@@ -158,16 +165,31 @@ async function endRank(ownerId: string, status: TaskStatus): Promise<number> {
   return (last?.rank ?? 0) + RANK_STEP;
 }
 
+/** The column a status key points at, or a 400 if the user has no such column. */
+async function requireColumn(userId: string, key: string) {
+  const column = (await columnsFor(userId)).find((c) => c.key === key);
+  if (!column) throw HttpError.badRequest(`There is no column "${key}" on your board`);
+  return column;
+}
+
 export async function createTask(userId: string, input: CreateTaskInput) {
-  const [number, rank] = await Promise.all([nextIssueNumber(userId), endRank(userId, input.status)]);
-  const task = await Task.create({ ...input, owner: userId, number, rank });
+  const columns = await columnsFor(userId);
+  const column = input.status ? columns.find((c) => c.key === input.status) : columns[0];
+  if (!column) throw HttpError.badRequest(`There is no column "${input.status}" on your board`);
+
+  const [number, rank] = await Promise.all([nextIssueNumber(userId), endRank(userId, column.key)]);
+  const task = await Task.create({ ...input, status: column.key, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
   return toTaskDTO(task);
 }
 
 export async function updateTask(userId: string, id: string, input: UpdateTaskInput) {
   const task = await findOwned(userId, id);
   // Changing status through the form (not a drag) lands the task at the bottom of its new column.
-  if (input.status && input.status !== task.status) task.rank = await endRank(userId, input.status);
+  if (input.status && input.status !== task.status) {
+    const column = await requireColumn(userId, input.status);
+    task.rank = await endRank(userId, column.key);
+    task.completedAt = column.isDone ? new Date() : null;
+  }
   task.set(input);
   await task.save();
   return toTaskDTO(task);
@@ -189,7 +211,8 @@ async function rebalanceColumn(ownerId: string, status: TaskStatus) {
  */
 export async function moveTask(userId: string, id: string, input: MoveTaskInput) {
   const task = await findOwned(userId, id);
-  const { status } = input;
+  const column = await requireColumn(userId, input.status);
+  const status = column.key;
   const afterId = input.afterId && input.afterId !== id ? input.afterId : null;
 
   const compute = async (): Promise<number | null> => {
@@ -206,6 +229,8 @@ export async function moveTask(userId: string, id: string, input: MoveTaskInput)
   }
   if (rank === null) throw HttpError.conflict('Could not place the task, please try again');
 
+  // Entering a done column finishes the task (keeping the original time if it was already finished); leaving reopens it.
+  task.completedAt = column.isDone ? (task.completedAt ?? new Date()) : null;
   task.status = status;
   task.rank = rank;
   await task.save();

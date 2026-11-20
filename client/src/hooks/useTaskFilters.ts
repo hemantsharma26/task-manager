@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PRIORITIES, STATUSES, type DueFilter, type ListFilters, type SortField } from '../api/types';
+import { PRIORITIES, type DueFilter, type ListFilters, type SortField } from '../api/types';
 
 const DUE: readonly DueFilter[] = ['overdue', 'today', 'week', 'none'];
 const SORTS: readonly SortField[] = ['createdAt', 'dueDate', 'priority', 'title', 'rank'];
@@ -18,7 +18,8 @@ export function useTaskFilters() {
 
   const filters = useMemo<ListFilters>(
     () => ({
-      status: pick(STATUSES, params.get('status')),
+      // A column key. Whether it still exists is the server's call (an unknown one just matches nothing).
+      status: params.get('status')?.slice(0, 40) || undefined,
       priority: pick(PRIORITIES, params.get('priority')),
       due: pick(DUE, params.get('due')),
       q: (params.get('q') ?? '').slice(0, 100),

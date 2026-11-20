@@ -1,14 +1,9 @@
-export const STATUSES = ['todo', 'in_progress', 'done'] as const;
+// Board columns, left to right.
 export const PRIORITIES = ['low', 'medium', 'high'] as const;
 
-export type TaskStatus = (typeof STATUSES)[number];
+/** The key of one of the user's board columns. */
+export type TaskStatus = string;
 export type TaskPriority = (typeof PRIORITIES)[number];
-
-export const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  done: 'Done',
-};
 
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: 'Low',
@@ -64,11 +59,18 @@ export interface TaskPage {
 }
 
 export interface TaskStats {
-  todo: number;
-  in_progress: number;
-  done: number;
+  byStatus: Record<TaskStatus, number>;
   total: number;
   overdue: number;
+}
+
+/** A board column. Which columns exist, and in what order, is up to the user. */
+export interface Column {
+  id: string;
+  key: TaskStatus;
+  name: string;
+  /** Tasks in a "done" column are finished: struck through, and never overdue. */
+  isDone: boolean;
 }
 
 export interface TaskInput {

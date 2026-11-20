@@ -8,7 +8,7 @@ beforeEach(resetDb);
 afterAll(stopDb);
 
 type Agent = Awaited<ReturnType<typeof signedInAgent>>['agent'];
-type T = { id: string; key: string; number: number; status: string; title: string };
+type T = { id: string; key: string; number: number; status: string; title: string; completedAt?: string | null };
 
 const make = async (agent: Agent, body: Record<string, unknown>) => (await agent.post('/api/tasks').send(body)).body.task as T;
 const column = async (agent: Agent, status: string) =>
@@ -182,5 +182,36 @@ describe('list index usage', () => {
     await Task.init();
     const plan = await Task.find({ owner: user.id }).sort({ createdAt: -1, _id: -1 }).limit(10).explain('queryPlanner');
     expect(winningPlan(plan)).not.toContain('"stage":"SORT"');
+  });
+});
+
+describe('issue and re-work columns', () => {
+  it('accepts the two extra statuses on create, update and move', async () => {
+    const { agent } = await signedInAgent();
+    const a = await make(agent, { title: 'a', status: 'issue' });
+    const b = await make(agent, { title: 'b' });
+    expect(a.status).toBe('issue');
+
+    expect((await agent.patch(`/api/tasks/${b.id}`).send({ status: 'rework' })).body.task.status).toBe('rework');
+    expect((await move(agent, a.id, 'rework', b.id)).body.task.status).toBe('rework');
+    expect(await column(agent, 'rework')).toEqual(['b', 'a']);
+    expect(await column(agent, 'issue')).toEqual([]);
+  });
+
+  it('only "done" counts as finished: issue and re-work cards stay open and can be overdue', async () => {
+    const { agent } = await signedInAgent();
+    const a = await make(agent, { title: 'a', status: 'rework', dueDate: '2026-11-01' });
+    expect(a.completedAt ?? null).toBeNull();
+    const stats = (await agent.get('/api/tasks/stats?today=2026-11-20')).body;
+    expect(stats).toMatchObject({ byStatus: { rework: 1, issue: 0 }, total: 1, overdue: 1 });
+  });
+
+  it('sends a task through the whole flow and sets completedAt only at the end', async () => {
+    const { agent } = await signedInAgent();
+    const t = await make(agent, { title: 'flow' });
+    for (const status of ['in_progress', 'issue', 'rework']) {
+      expect((await move(agent, t.id, status, null)).body.task.completedAt).toBeNull();
+    }
+    expect((await move(agent, t.id, 'done', null)).body.task.completedAt).not.toBeNull();
   });
 });

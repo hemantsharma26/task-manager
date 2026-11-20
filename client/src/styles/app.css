@@ -496,12 +496,28 @@ input[type='date'].select {
 
 /* ---------- board ---------- */
 .board {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(230px, 1fr));
+  position: relative;
+  display: flex;
   gap: 12px;
-  align-items: start;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  /* A sideways swipe at the edge of the board must scroll the board, not trigger the browser's back/forward gesture. */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #b3b9c4 transparent;
+}
+.board.is-dragging {
+  /* Snapping would fight the auto-scroll that runs while a card is dragged near the edge. */
+  scroll-snap-type: none;
+}
+.column-tabs {
+  display: none;
 }
 .column {
+  flex: 1 0 252px;
+  max-width: 340px;
   background: var(--column);
   border-radius: 6px;
   padding: 8px;
@@ -607,8 +623,8 @@ input[type='date'].select {
 }
 .card-overlay {
   cursor: grabbing;
-  box-shadow: 0 8px 12px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
-  transform: rotate(2deg);
+  box-shadow: 0 12px 20px rgba(9, 30, 66, 0.28), 0 0 1px rgba(9, 30, 66, 0.31);
+  transform: scale(1.03) rotate(2deg);
 }
 .card-skeleton {
   height: 64px;
@@ -671,18 +687,6 @@ input[type='date'].select {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
-}
-.lozenge-todo {
-  background: #dcdfe4;
-  color: var(--subtle);
-}
-.lozenge-in_progress {
-  background: #cce0ff;
-  color: #0055cc;
-}
-.lozenge-done {
-  background: #baf3db;
-  color: var(--green);
 }
 
 .due {
@@ -951,18 +955,6 @@ input[type='date'].select {
   text-transform: uppercase;
   font-size: 12px;
 }
-.select-todo {
-  background-color: #dcdfe4;
-  color: var(--subtle);
-}
-.select-in_progress {
-  background-color: #cce0ff;
-  color: #0055cc;
-}
-.select-done {
-  background-color: #baf3db;
-  color: var(--green);
-}
 .clear-date {
   font-size: 12px;
 }
@@ -1123,15 +1115,28 @@ dialog.dialog[open]::backdrop {
     padding: 16px;
   }
   .board {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    grid-auto-columns: minmax(270px, 82vw);
-    overflow-x: auto;
-    padding-bottom: 12px;
-    scroll-snap-type: x proximity;
+    /* One column per screen, and each swipe settles exactly on a column. */
+    scroll-snap-type: x mandatory;
+    margin: 0 -16px;
+    padding: 0 16px 14px;
+    scroll-padding-left: 16px;
   }
   .column {
+    flex: 0 0 min(84vw, 340px);
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  .column-tabs {
+    position: relative;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .column-tabs::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -1147,6 +1152,262 @@ dialog.dialog[open]::backdrop {
   }
   .brand-name {
     display: none;
+  }
+}
+
+/* ---------- touch handle, tabs, status accents ---------- */
+.card {
+  position: relative;
+}
+.card-handle {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--muted);
+  border-radius: var(--radius);
+  /* The one place on a card that never scrolls: touching it starts a drag at once. */
+  touch-action: none;
+  cursor: grab;
+}
+@media (pointer: coarse) {
+  .card-handle {
+    display: grid;
+  }
+  .card-title {
+    padding-right: 28px;
+  }
+}
+
+.column-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(9, 30, 66, 0.06);
+  color: var(--subtle);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.column-tab.active {
+  background: var(--blue);
+  color: #fff;
+}
+.column-tab.active .count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.column[data-accent] .column-head h2::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.card[data-accent] {
+  box-shadow: inset 3px 0 0 var(--accent), var(--card-shadow);
+}
+
+/* ---------- motion ---------- */
+.card-enter-stagger {
+  animation: card-in 0.32s cubic-bezier(0.2, 0, 0, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+.card-enter-pop {
+  animation: card-pop 0.22s cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes card-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.card-overlay {
+  animation: lift 0.16s cubic-bezier(0.2, 0, 0, 1) both;
+}
+@keyframes lift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.03) rotate(2deg);
+  }
+}
+.page-enter {
+  animation: page-in 0.22s cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.table .row {
+  animation: page-in 0.24s cubic-bezier(0.2, 0, 0, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 20ms);
+}
+.btn:active:not(:disabled),
+.icon-btn:active,
+.quick-open:active,
+.column-tab:active {
+  transform: scale(0.97);
+}
+.btn,
+.icon-btn,
+.quick-open {
+  transition: background 0.12s, transform 0.08s;
+}
+
+/* ---------- editable columns ---------- */
+.board {
+  min-height: 340px;
+}
+.column-head {
+  position: relative;
+}
+.colmenu {
+  position: relative;
+  margin-left: auto;
+}
+.colmenu-btn {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.column-head:hover .colmenu-btn,
+.column-head:focus-within .colmenu-btn,
+.colmenu-btn[aria-expanded='true'] {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .colmenu-btn {
+    opacity: 1;
+  }
+}
+.colmenu-list {
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 200px;
+  padding: 6px 0;
+}
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.menu-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.menu-sep {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--border);
+}
+.menu-danger {
+  color: var(--danger);
+}
+.column-rename {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #fff;
+  border-color: var(--focus);
+  min-width: 0;
+  flex: 1;
+}
+.done-flag {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4bce97;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.add-column {
+  flex: 0 0 252px;
+}
+.add-open {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--subtle);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.add-open:hover:not(:disabled) {
+  background: rgba(9, 30, 66, 0.05);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.add-open:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--column);
+  border-radius: 6px;
+  animation: pop 0.14s ease both;
+}
+.add-form input[type='text'],
+.add-form input:not([type]) {
+  background: #fff;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--subtle);
+  cursor: pointer;
+}
+.check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+}
+.add-limit {
+  padding: 8px 4px;
+  font-size: 13px;
+}
+@media (max-width: 1000px) {
+  .add-column {
+    flex: 0 0 min(84vw, 340px);
+    scroll-snap-align: start;
   }
 }
 

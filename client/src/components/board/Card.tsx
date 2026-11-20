@@ -1,11 +1,13 @@
-import { memo, type CSSProperties, type KeyboardEvent } from 'react';
+import { memo, type CSSProperties, type KeyboardEvent, type TouchEventHandler } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { isTempId } from '../../api/cache';
+import { useColumnLookup } from '../../api/columns';
+import { toneFor } from '../../lib/tone';
 import type { Task } from '../../api/types';
 import { Avatar } from '../Avatar';
 import { DueBadge } from '../DueBadge';
-import { CheckIcon, PriorityIcon } from '../Icons';
+import { CheckIcon, GripIcon, PriorityIcon } from '../Icons';
 
 interface CardBodyProps {
   task: Task;
@@ -15,7 +17,8 @@ interface CardBodyProps {
 
 /** The card face. Also used (without the sortable wrapper) as the floating copy while dragging. */
 export function CardBody({ task, today, owner }: CardBodyProps) {
-  const done = task.status === 'done';
+  const { isDone } = useColumnLookup();
+  const done = isDone(task.status);
   return (
     <>
       <p className="card-title">{task.title}</p>
@@ -45,19 +48,36 @@ export function CardBody({ task, today, owner }: CardBodyProps) {
 
 interface CardProps extends CardBodyProps {
   onOpen: (id: string) => void;
+  /** How the card appears when it first mounts. Cards that move between columns never animate in. */
+  enter?: 'stagger' | 'pop';
+  index: number;
 }
 
 // memo: during a drag the board re-renders on every pointer move, and only the cards that actually
 // changed (their task object) should pay for it.
-export const Card = memo(function Card({ task, today, owner, onOpen }: CardProps) {
+export const Card = memo(function Card({ task, today, owner, onOpen, enter, index }: CardProps) {
   // A card that is still being saved has no real id yet, so it can be neither opened nor dragged.
   const pending = isTempId(task.id);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled: pending });
+  const { isDone } = useColumnLookup();
+  const done = isDone(task.status);
+  const accent = toneFor(task.status, done).accent;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: pending,
+    // The other cards slide out of the way on the same curve the floating card lands with.
+    transition: { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' },
+  });
 
-  const style: CSSProperties = { transform: CSS.Transform.toString(transform), transition };
+  // Touch is deliberately NOT attached to the whole card. A touch listener on every card makes the browser wait
+  // for JavaScript before it may start scrolling, which is what makes swiping the board feel sticky. Instead, touch
+  // dragging starts from the grip handle (the only element with touch-action: none), and swiping anywhere else on
+  // the card is pure native scrolling. Mouse and keyboard still work from the whole card.
+  const { onTouchStart, ...cardListeners } = listeners ?? {};
+
+  const style: CSSProperties = { transform: CSS.Transform.toString(transform), transition, ['--i' as string]: Math.min(index, 8), ['--accent' as string]: accent };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    listeners?.onKeyDown?.(e);
+    cardListeners.onKeyDown?.(e);
     if (e.key === 'Enter' && !e.defaultPrevented && !pending) onOpen(task.id);
   };
 
@@ -65,13 +85,24 @@ export const Card = memo(function Card({ task, today, owner, onOpen }: CardProps
     <div
       ref={setNodeRef}
       style={style}
-      className={`card ${isDragging ? 'card-ghost' : ''} ${pending ? 'card-pending' : ''} ${task.status === 'done' ? 'card-is-done' : ''}`}
+      data-accent={accent ? '' : undefined}
+      className={`card ${enter ? `card-enter-${enter}` : ''} ${isDragging ? 'card-ghost' : ''} ${pending ? 'card-pending' : ''} ${done ? 'card-is-done' : ''}`}
       {...attributes}
-      {...listeners}
+      {...cardListeners}
       onKeyDown={onKeyDown}
       onClick={() => !pending && onOpen(task.id)}
       aria-label={`${task.key} ${task.title}`}
     >
+      {!pending && (
+        <span
+          className="card-handle"
+          aria-hidden="true"
+          onTouchStart={onTouchStart as TouchEventHandler<HTMLSpanElement> | undefined}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripIcon />
+        </span>
+      )}
       <CardBody task={task} today={today} owner={owner} />
     </div>
   );

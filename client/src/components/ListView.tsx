@@ -8,6 +8,7 @@ import { Pagination } from './Pagination';
 import { StatusLozenge } from './Lozenge';
 import { Avatar } from './Avatar';
 import { PRIORITY_LABEL } from '../api/types';
+import { useColumnLookup } from '../api/columns';
 
 interface Props {
   filters: ListFilters;
@@ -30,6 +31,7 @@ const COLUMNS: { label: string; sort?: SortField; defaultOrder?: 'asc' | 'desc' 
 export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen }: Props) {
   const { data, isPending, isError, error, refetch, isPlaceholderData } = useTasks(filters);
   const today = todayLocal();
+  const { isDone } = useColumnLookup();
 
   // If the last row on a page is deleted, step back to a page that still exists.
   useEffect(() => {
@@ -84,14 +86,14 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
                     </td>
                   </tr>
                 ))
-              : data?.items.map((t) => (
-                  <tr key={t.id} className="row" onClick={() => onOpen(t.id)}>
+              : data?.items.map((t, i) => (
+                  <tr key={t.id} className="row" style={{ ['--i' as string]: i }} onClick={() => onOpen(t.id)}>
                     <td className="cell-key">
                       <button type="button" className="link-btn" onClick={(e) => { e.stopPropagation(); onOpen(t.id); }}>
                         {t.key}
                       </button>
                     </td>
-                    <td className={`cell-title ${t.status === 'done' ? 'is-done' : ''}`}>{t.title}</td>
+                    <td className={`cell-title ${isDone(t.status) ? 'is-done' : ''}`}>{t.title}</td>
                     <td>
                       <StatusLozenge status={t.status} />
                     </td>
@@ -100,7 +102,7 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
                         <PriorityIcon priority={t.priority} /> {PRIORITY_LABEL[t.priority]}
                       </span>
                     </td>
-                    <td>{t.dueDate ? <DueBadge due={t.dueDate} done={t.status === 'done'} today={today} /> : <span className="muted">None</span>}</td>
+                    <td>{t.dueDate ? <DueBadge due={t.dueDate} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
                     <td>
                       <Avatar name={owner} size={22} />
                     </td>

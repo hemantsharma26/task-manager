@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TASK_PRIORITIES, TASK_STATUSES } from '../models/Task.js';
+import { TASK_PRIORITIES } from '../models/Task.js';
 
 /** YYYY-MM-DD that is also a real calendar date (rejects 2026-02-31). */
 export const isoDate = z
@@ -10,13 +10,17 @@ export const isoDate = z
     return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
   }, 'Not a valid calendar date');
 
+/** A column key. Whether it exists is checked against the user's own columns in the service. */
+const columnKey = z.string().trim().min(1).max(40);
+
 const title = z.string().trim().min(1, 'Title is required').max(120, 'Title is too long (max 120)');
 const description = z.string().trim().max(2000, 'Description is too long (max 2000)');
 
 export const createTaskSchema = z.object({
   title,
   description: description.default(''),
-  status: z.enum(TASK_STATUSES).default('todo'),
+  // Left out = the first column on the board.
+  status: columnKey.optional(),
   priority: z.enum(TASK_PRIORITIES).default('medium'),
   dueDate: isoDate.nullable().default(null),
 });
@@ -25,7 +29,7 @@ export const updateTaskSchema = z
   .object({
     title,
     description,
-    status: z.enum(TASK_STATUSES),
+    status: columnKey,
     priority: z.enum(TASK_PRIORITIES),
     dueDate: isoDate.nullable(),
   })
@@ -36,7 +40,7 @@ export const DUE_FILTERS = ['overdue', 'today', 'week', 'none'] as const;
 export const SORT_FIELDS = ['createdAt', 'dueDate', 'priority', 'title', 'rank'] as const;
 
 export const listQuerySchema = z.object({
-  status: z.enum(TASK_STATUSES).optional(),
+  status: columnKey.optional(),
   priority: z.enum(TASK_PRIORITIES).optional(),
   due: z.enum(DUE_FILTERS).optional(),
   q: z.string().trim().max(100).optional(),
@@ -52,7 +56,7 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
 // Drop a card into `status`, directly below `afterId`. No afterId means the top of the column.
 export const moveTaskSchema = z.object({
-  status: z.enum(TASK_STATUSES),
+  status: columnKey,
   afterId: objectId.nullish(),
 });
 

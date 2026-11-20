@@ -10,6 +10,7 @@ import { pinoHttp } from 'pino-http';
 import { env, isProd } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 import { authRouter } from './routes/auth.routes.js';
+import { columnRouter } from './routes/column.routes.js';
 import { taskRouter } from './routes/task.routes.js';
 import { logger } from './utils/logger.js';
 
@@ -73,6 +74,7 @@ export function createApp() {
   });
   app.use('/api/auth', authRouter);
   app.use('/api/tasks', taskRouter);
+  app.use('/api/columns', columnRouter);
   app.use('/api', notFoundHandler);
 
   // In production the API also serves the built React app, so the whole product is a

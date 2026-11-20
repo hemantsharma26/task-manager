@@ -22,7 +22,7 @@ export function AppShell() {
   const [creating, setCreating] = useState(false);
   const create = useCreateTask();
   const { notify } = useToast();
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
   const { filters, update, reset } = useTaskFilters();
   const { data: stats } = useStats();
   const [menu, setMenu] = useState(false);
@@ -99,7 +99,10 @@ export function AppShell() {
         </aside>
 
         <main className="main">
-          <Outlet context={{ openIssue: select } satisfies ShellContext} />
+          {/* keyed by route, so switching between Board and List fades the new page in */}
+          <div key={pathname} className="page-enter">
+            <Outlet context={{ openIssue: select } satisfies ShellContext} />
+          </div>
         </main>
       </div>
 

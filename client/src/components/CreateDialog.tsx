@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/http';
-import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, type TaskInput } from '../api/types';
+import { useColumns } from '../api/columns';
+import { PRIORITIES, PRIORITY_LABEL, type TaskInput } from '../api/types';
 import { CloseIcon } from './Icons';
 
 interface Props {
@@ -24,6 +25,7 @@ function validate(v: TaskInput): Errors {
 
 export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { data: columns = [] } = useColumns();
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -33,7 +35,8 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) {
-      setValues(EMPTY);
+      // New tasks start in the first column of the board.
+      setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo' });
       setErrors({});
       setSaving(false);
       el.showModal();
@@ -123,10 +126,10 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
 
           <label className="field">
             <span>Status</span>
-            <select value={values.status} onChange={(e) => set('status', e.target.value as TaskInput['status'])}>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
+            <select value={values.status} onChange={(e) => set('status', e.target.value)}>
+              {columns.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.name}
                 </option>
               ))}
             </select>

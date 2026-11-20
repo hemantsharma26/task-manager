@@ -1,9 +1,30 @@
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../api/http';
+import { COLUMNS_KEY } from '../api/columns';
 import { CreateDialog } from './CreateDialog';
 
+// The status picker reads the user's columns, so give the component a client that already has them.
+function render(ui: ReactElement) {
+  const qc = new QueryClient();
+  qc.setQueryData(COLUMNS_KEY, [
+    { id: 'c1', key: 'todo', name: 'To do', isDone: false },
+    { id: 'c2', key: 'review', name: 'Review', isDone: false },
+    { id: 'c3', key: 'done', name: 'Done', isDone: true },
+  ]);
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
 describe('CreateDialog', () => {
+  it('offers the user\'s own columns as statuses, starting on the first one', async () => {
+    render(<CreateDialog open onClose={() => {}} onSubmit={vi.fn()} />);
+    const status = screen.getByLabelText(/status/i) as HTMLSelectElement;
+    expect([...status.options].map((o) => o.text)).toEqual(['To do', 'Review', 'Done']);
+    expect(status.value).toBe('todo');
+  });
+
   it('blocks an empty title without calling the API', async () => {
     const onSubmit = vi.fn();
     render(<CreateDialog open onClose={() => {}} onSubmit={onSubmit} />);

@@ -2,12 +2,13 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClie
 import { todayLocal } from '../lib/dates';
 import { appendToColumnCaches, findTaskInCaches, moveTaskBetweenColumnCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot, TASKS_KEY } from './cache';
 import { http } from './http';
-import type { CommonFilters, ListFilters, Task, TaskInput, TaskPage, TaskStats, TaskStatus } from './types';
+import { COLUMNS_KEY } from './columns';
+import type { Column, CommonFilters, ListFilters, Task, TaskInput, TaskPage, TaskStats, TaskStatus } from './types';
 
 export const COLUMN_PAGE_SIZE = 20;
 export const LIST_PAGE_SIZE = 15;
 
-const keys = {
+export const keys = {
   column: (status: TaskStatus, f: CommonFilters, today: string) => ['tasks', 'column', status, f, today] as const,
   list: (f: ListFilters, today: string) => ['tasks', 'list', f, today] as const,
   detail: (id: string) => ['tasks', 'detail', id] as const,
@@ -88,10 +89,10 @@ function useRefresh() {
     /** Everything: used after create/delete, where counts and every column can change. */
     all: () => Promise.all([qc.invalidateQueries({ queryKey: TASKS_KEY }), qc.invalidateQueries({ queryKey: ['stats'] })]),
     /** Only the board columns for these statuses (plus the list, which spans all of them) and the counts. */
-    columns: (statuses: TaskStatus[], withStats: boolean) =>
+    columns: (statuses: TaskStatus[] | 'all', withStats: boolean) =>
       Promise.all([
         qc.invalidateQueries({
-          predicate: ({ queryKey: k }) => k[0] === 'tasks' && (k[1] === 'list' || (k[1] === 'column' && statuses.includes(k[2] as TaskStatus))),
+          predicate: ({ queryKey: k }) => k[0] === 'tasks' && (k[1] === 'list' || (k[1] === 'column' && (statuses === 'all' || statuses.includes(k[2] as TaskStatus)))),
         }),
         withStats ? qc.invalidateQueries({ queryKey: ['stats'] }) : undefined,
       ]),
@@ -106,7 +107,8 @@ export function useCreateTask() {
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: TASKS_KEY });
       const snapshot = takeSnapshot(qc);
-      const status = input.status ?? 'todo';
+      // No status means "first column"; the first column on screen is where the card is shown meanwhile.
+      const status = input.status ?? qc.getQueryData<Column[]>(COLUMNS_KEY)?.[0]?.key ?? 'todo';
       const now = new Date().toISOString();
       // The card shows up at once, greyed out, with a placeholder key. The server's answer (real key, real position)
       // replaces it a moment later.
@@ -126,7 +128,7 @@ export function useCreateTask() {
       return { snapshot };
     },
     onError: (_e, _v, ctx) => restoreSnapshot(qc, ctx?.snapshot),
-    onSettled: (_res, _err, input) => refresh.columns([input.status ?? 'todo'], true),
+    onSettled: (_res, _err, input) => refresh.columns(input.status ? [input.status] : 'all', true),
   });
 }
 
@@ -153,7 +155,7 @@ export function useUpdateTask() {
       // Title and description edits change nothing about where the card sits or the counts, so no refetch.
       // Status moves it to another column, a due date changes the overdue count, and priority can change filter results.
       if ('status' in changes || 'dueDate' in changes || 'priority' in changes) {
-        void refresh.columns(['todo', 'in_progress', 'done'], 'status' in changes || 'dueDate' in changes);
+        void refresh.columns('all', 'status' in changes || 'dueDate' in changes);
       }
     },
   });
@@ -185,4 +187,10 @@ export function useDeleteTask() {
     onError: (_e, _v, ctx) => restoreSnapshot(qc, ctx?.snapshot),
     onSettled: refresh.all,
   });
+}
+
+/** The cards of one column as currently cached (all loaded pages, no duplicates). Used to start a drag from exactly what is on screen. */
+export function readColumnItems(qc: ReturnType<typeof useQueryClient>, status: TaskStatus, filters: CommonFilters, today: string): Task[] {
+  const data = qc.getQueryData<InfiniteData<TaskPage>>(keys.column(status, filters, today));
+  return [...new Map((data?.pages ?? []).flatMap((p) => p.items).map((t) => [t.id, t])).values()];
 }

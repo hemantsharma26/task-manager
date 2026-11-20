@@ -163,7 +163,7 @@ describe('listing', () => {
     await make(agent, { title: 'b', status: 'in_progress' });
     await make(agent, { title: 'c', status: 'done', dueDate: '2026-11-01' });
     const res = await agent.get('/api/tasks/stats?today=2026-11-20');
-    expect(res.body).toEqual({ todo: 1, in_progress: 1, done: 1, total: 3, overdue: 1 });
+    expect(res.body).toEqual({ byStatus: { todo: 1, in_progress: 1, issue: 0, rework: 0, done: 1 }, total: 3, overdue: 1 });
   });
 
   it('rejects bad query params instead of ignoring them', async () => {

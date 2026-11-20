@@ -94,3 +94,15 @@ export function PriorityIcon({ priority, size = 16 }: { priority: TaskPriority; 
     </svg>
   );
 }
+
+export const GripIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2.2}>
+    <path d="M6 3.5h.01M10 3.5h.01M6 8h.01M10 8h.01M6 12.5h.01M10 12.5h.01" />
+  </svg>
+);
+
+export const DotsIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2.4}>
+    <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" />
+  </svg>
+);
