@@ -1,8 +1,19 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
-import { MODEL, PATTERN, RICH_TEXT_LIMITS, TASK_LIMITS } from '../../constants/index.js';
+import { MODEL, PATTERN, RICH_TEXT_LIMITS, TASK_LIMITS, UPLOAD, type AttachmentKind } from '../../constants/index.js';
 
 /** The key of one of the user's board columns (see the columns module). */
 export type TaskStatus = string;
+
+/** A file attached to a task. The file itself lives on disk under storedName; the name the user sees is `name`. */
+export interface IAttachment {
+  _id: Types.ObjectId;
+  name: string;
+  mime: string;
+  kind: AttachmentKind;
+  size: number;
+  storedName: string;
+  createdAt: Date;
+}
 
 export interface ITask {
   owner: Types.ObjectId;
@@ -24,6 +35,7 @@ export interface ITask {
   dueDate: string | null;
   /** Wall-clock time on the due date, HH:MM (24 hour). Like the date it means the same hour for everybody. Only set together with a dueDate. */
   dueTime: string | null;
+  attachments: IAttachment[];
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +55,19 @@ const taskSchema = new Schema<ITask>(
     priority: { type: String, required: true, maxlength: TASK_LIMITS.PRIORITY_KEY_MAX },
     dueDate: { type: String, default: null, match: PATTERN.ISO_DATE },
     dueTime: { type: String, default: null, match: PATTERN.TIME_24H },
+    attachments: {
+      type: [
+        new Schema<IAttachment>({
+          name: { type: String, required: true, maxlength: UPLOAD.NAME_MAX_LENGTH },
+          mime: { type: String, required: true },
+          kind: { type: String, required: true },
+          size: { type: Number, required: true },
+          storedName: { type: String, required: true },
+          createdAt: { type: Date, default: () => new Date() },
+        }),
+      ],
+      default: [],
+    },
     completedAt: { type: Date, default: null },
   },
   { timestamps: true },

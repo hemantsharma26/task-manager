@@ -56,6 +56,12 @@ export const ERROR_MESSAGE = {
   PRIORITY_HAS_TASKS: (count: number) => `${count} ${count === 1 ? 'task uses' : 'tasks use'} this priority. Choose another priority to move them to.`,
   PRIORITY_BAD_TARGET: 'Pick a different, existing priority to move the tasks to',
   PRIORITY_PLACEMENT_FAILED: 'Could not place the priority, please try again',
+  ATTACHMENT_NOT_FOUND: 'Attachment not found',
+  NO_FILES: 'Choose at least one file',
+  FILE_TYPE_NOT_ALLOWED: (name: string) => `"${name}" is not an allowed file. Use an image (PNG, JPEG, GIF, WebP), a video (MP4, WebM, MOV) or a PDF.`,
+  FILE_TOO_LARGE: (name: string, kind: string, mb: number) => `"${name}" is too large: ${kind} files can be at most ${mb} MB`,
+  TOO_MANY_FILES_AT_ONCE: (max: number) => `You can upload at most ${max} files at a time`,
+  TOO_MANY_FILES_ON_TASK: (max: number) => `A task can have at most ${max} attachments`,
   TOO_MANY_AUTH_ATTEMPTS: 'Too many attempts, try again in a few minutes',
   TOO_MANY_REQUESTS: 'Too many requests, slow down a little',
 } as const;

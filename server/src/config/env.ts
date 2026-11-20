@@ -72,6 +72,10 @@ const schema = z.object({
   CACHE_TTL_COLUMNS_SECONDS: positiveInt(CACHE_TTL_SECONDS.COLUMNS),
   CACHE_TTL_PRIORITIES_SECONDS: positiveInt(CACHE_TTL_SECONDS.PRIORITIES),
 
+  // --- uploads
+  // Where attached files (images, videos, PDFs) are kept. Relative paths are relative to the server folder.
+  UPLOAD_DIR: z.string().default('uploads'),
+
   // --- rate limiting
   // Off only in the automated tests, which sign in hundreds of times from one address.
   RATE_LIMITING_ENABLED: bool.default(BOOLEAN_ENV.TRUE),
@@ -103,6 +107,8 @@ if (env.NODE_ENV === NODE_ENV.PRODUCTION) {
     }
   }
 }
+/** Absolute path of the folder uploaded files live in. */
+export const uploadDir = path.resolve(SERVER_DIR, env.UPLOAD_DIR);
 export const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
 export const hstsEnabled = env.HSTS_ENABLED === BOOLEAN_ENV.TRUE;
 export const isProd = env.NODE_ENV === NODE_ENV.PRODUCTION;

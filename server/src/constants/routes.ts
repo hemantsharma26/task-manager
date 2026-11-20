@@ -14,11 +14,19 @@ export const ROUTE = {
     SESSIONS: '/sessions',
     SESSION_BY_ID: '/sessions/:id',
   },
-  TASKS: { BASE: '/tasks', ROOT: '/', STATS: '/stats', BY_ID: '/:id', MOVE: '/:id/move' },
+  TASKS: {
+    BASE: '/tasks',
+    ROOT: '/',
+    STATS: '/stats',
+    BY_ID: '/:id',
+    MOVE: '/:id/move',
+    ATTACHMENTS: '/:id/attachments',
+    ATTACHMENT_BY_ID: '/:id/attachments/:attachmentId',
+  },
   COLUMNS: { BASE: '/columns', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
   PRIORITIES: { BASE: '/priorities', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
 } as const;
 
-export const ROUTE_PARAM = { ID: 'id' } as const;
+export const ROUTE_PARAM = { ID: 'id', ATTACHMENT_ID: 'attachmentId' } as const;
 
 export const HEALTH_STATUS = { OK: 'ok' } as const;

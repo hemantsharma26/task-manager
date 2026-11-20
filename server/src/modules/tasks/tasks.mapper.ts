@@ -13,6 +13,7 @@ export const toTaskDTO = (t: TaskLike) => ({
   // its description is plain text, shown (escaped) as the paragraphs it always was. Nothing unclean is ever passed on.
   description: t.descriptionText === undefined && t.description ? plainToHtml(t.description) : t.description,
   color: t.color ?? null,
+  attachments: (t.attachments ?? []).map((a) => ({ id: String(a._id), name: a.name, mime: a.mime, kind: a.kind, size: a.size })),
   status: t.status,
   priority: t.priority,
   dueDate: t.dueDate ?? null,

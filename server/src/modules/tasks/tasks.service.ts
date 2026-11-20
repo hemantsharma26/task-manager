@@ -3,6 +3,7 @@ import { DEFAULT_COLUMN_FALLBACK_KEY, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, 
 import { cache, cacheKeys, type Cached } from '../../infra/cache/index.js';
 import { HttpError } from '../../shared/errors/http-error.js';
 import { cleanNote } from '../../shared/utils/html.js';
+import { removeStoredFiles } from '../attachments/attachments.storage.js';
 import { todayUtc } from '../../shared/utils/dates.js';
 import { rankBetween } from '../../shared/utils/rank.js';
 import { columnsOf } from '../columns/columns.service.js';
@@ -157,6 +158,9 @@ export async function moveTask(userId: string, id: string, input: MoveTaskInput)
 }
 
 export async function deleteTask(userId: string, id: string) {
-  if (!(await taskRepository.deleteOwned(userId, id))) throw HttpError.notFound(ERROR_MESSAGE.TASK_NOT_FOUND);
+  const task = await taskRepository.findOwned(userId, id);
+  if (!task || !(await taskRepository.deleteOwned(userId, id))) throw HttpError.notFound(ERROR_MESSAGE.TASK_NOT_FOUND);
+  // The files go with the task, so nothing is left behind on disk.
+  await removeStoredFiles(userId, task.attachments.map((a) => a.storedName));
   await cache.invalidateUser(userId);
 }

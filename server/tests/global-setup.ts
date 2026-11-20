@@ -1,4 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import net from 'node:net';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -7,6 +10,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 let mongod: MongoMemoryServer | undefined;
 // A throwaway redis-server too, when the binary is installed. Tests that need real Redis skip themselves otherwise.
 let redis: ChildProcess | undefined;
+let uploads: string | undefined;
 
 const freePort = () =>
   new Promise<number>((resolve, reject) => {
@@ -37,11 +41,15 @@ async function startRedis(): Promise<string | undefined> {
 export async function setup() {
   mongod = await MongoMemoryServer.create();
   process.env.MONGODB_URI = mongod.getUri('task-manager-test');
+  // Uploaded files go to a throwaway folder that is deleted when the run ends.
+  uploads = mkdtempSync(path.join(tmpdir(), 'task-manager-uploads-'));
+  process.env.UPLOAD_DIR = uploads;
   const redisUrl = await startRedis();
   if (redisUrl) process.env.REDIS_TEST_URL = redisUrl;
 }
 
 export async function teardown() {
   redis?.kill();
+  if (uploads) rmSync(uploads, { recursive: true, force: true });
   await mongod?.stop();
 }

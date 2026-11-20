@@ -6,3 +6,5 @@ dist
 .mongo-data
 .redis-data
 *.log
+uploads
+.test-uploads
