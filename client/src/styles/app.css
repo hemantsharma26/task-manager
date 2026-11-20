@@ -20,29 +20,6 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1117;
-    --surface: #181b25;
-    --surface-2: #20242f;
-    --border: #2b3040;
-    --text: #e8eaf2;
-    --muted: #98a0b5;
-    --primary: #7c78ff;
-    --primary-hover: #918eff;
-    --primary-contrast: #0f1117;
-    --danger: #ff8a80;
-    --danger-bg: #3a1d1d;
-    --warn: #fbbf6a;
-    --warn-bg: #3a2c14;
-    --ok: #6ee7a0;
-    --ok-bg: #16301f;
-    --focus: #918eff;
-    --shadow: none;
-    color-scheme: dark;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
