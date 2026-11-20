@@ -1,5 +1,5 @@
 import { Types, type PipelineStage } from 'mongoose';
-import { COMPUTED_FIELD, DUE, SORT, SORT_DIRECTION, WEEK_SPAN_DAYS, type SortField } from '../../constants/index.js';
+import { COMPUTED_FIELD, DUE, NO_TIME_SORT_KEY, SORT, SORT_DIRECTION, WEEK_SPAN_DAYS, type SortField } from '../../constants/index.js';
 import { addDays, todayUtc } from '../../shared/utils/dates.js';
 import { escapeRegex } from '../../shared/utils/text.js';
 import type { ListQuery } from './tasks.schemas.js';
@@ -61,7 +61,8 @@ const priorityWeightExpr = (orderedKeys: string[]) => ({ $indexOfArray: [ordered
  */
 export function computedSortPipeline(filter: Record<string, unknown>, sort: SortField, dir: 1 | -1, skip: number, limit: number, priorityOrder: string[] = []): PipelineStage[] {
   const sortKeys: Partial<Record<SortField, Record<string, 1 | -1>>> = {
-    [SORT.DUE_DATE]: { [COMPUTED_FIELD.NO_DUE_DATE]: SORT_DIRECTION.ASC, dueDate: dir },
+    // Within one date the earliest window comes first, and tasks without a time come last.
+    [SORT.DUE_DATE]: { [COMPUTED_FIELD.NO_DUE_DATE]: SORT_DIRECTION.ASC, dueDate: dir, [COMPUTED_FIELD.NO_TIME]: SORT_DIRECTION.ASC, [COMPUTED_FIELD.TIME_OF_DAY]: dir },
     [SORT.PRIORITY]: { [COMPUTED_FIELD.PRIORITY_WEIGHT]: dir, createdAt: SORT_DIRECTION.DESC },
     [SORT.TITLE]: { [COMPUTED_FIELD.TITLE_LOWER]: dir },
   };
@@ -73,6 +74,8 @@ export function computedSortPipeline(filter: Record<string, unknown>, sort: Sort
         [COMPUTED_FIELD.PRIORITY_WEIGHT]: priorityWeightExpr(priorityOrder),
         [COMPUTED_FIELD.NO_DUE_DATE]: { $cond: [{ $eq: [{ $ifNull: ['$dueDate', null] }, null] }, 1, 0] },
         [COMPUTED_FIELD.TITLE_LOWER]: { $toLower: '$title' },
+        [COMPUTED_FIELD.NO_TIME]: { $cond: [{ $eq: [{ $ifNull: ['$dueTime', null] }, null] }, 1, 0] },
+        [COMPUTED_FIELD.TIME_OF_DAY]: { $ifNull: ['$startTime', { $ifNull: ['$dueTime', NO_TIME_SORT_KEY] }] },
       },
     },
     // _id as the last key keeps pagination stable when the other keys tie.
@@ -80,6 +83,6 @@ export function computedSortPipeline(filter: Record<string, unknown>, sort: Sort
     { $skip: skip },
     { $limit: limit },
     // Drop the helper fields so they never leak into the response.
-    { $project: { [COMPUTED_FIELD.PRIORITY_WEIGHT]: 0, [COMPUTED_FIELD.NO_DUE_DATE]: 0, [COMPUTED_FIELD.TITLE_LOWER]: 0 } },
+    { $project: { [COMPUTED_FIELD.PRIORITY_WEIGHT]: 0, [COMPUTED_FIELD.NO_DUE_DATE]: 0, [COMPUTED_FIELD.TITLE_LOWER]: 0, [COMPUTED_FIELD.TIME_OF_DAY]: 0, [COMPUTED_FIELD.NO_TIME]: 0 } },
   ];
 }

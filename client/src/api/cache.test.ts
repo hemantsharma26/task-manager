@@ -12,6 +12,7 @@ const task = (n: number, over: Partial<Task> = {}): Task => ({
   priority: 'medium',
   dueDate: null,
   dueTime: null,
+  startTime: null,
   color: null,
   attachments: [],
   completedAt: null,

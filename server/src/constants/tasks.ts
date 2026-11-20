@@ -18,7 +18,9 @@ export const TASK_LIMITS = { TITLE_MAX: 120, DESCRIPTION_MAX: 2000, COLUMN_KEY_M
 export const PAGINATION = { DEFAULT_LIMIT: 10, MAX_LIMIT: 50, FIRST_PAGE: 1 } as const;
 
 // Helper fields the list aggregation adds to sort by, and then removes again.
-export const COMPUTED_FIELD = { PRIORITY_WEIGHT: '_priorityRank', NO_DUE_DATE: '_noDueDate', TITLE_LOWER: '_titleLower' } as const;
+export const COMPUTED_FIELD = { PRIORITY_WEIGHT: '_priorityRank', NO_DUE_DATE: '_noDueDate', TITLE_LOWER: '_titleLower', TIME_OF_DAY: '_timeOfDay', NO_TIME: '_noTime' } as const;
+/** Sorts after every real time of day, so tasks without a time come last within their date. */
+export const NO_TIME_SORT_KEY = '99:99';
 
 export const DEFAULT_COLUMN_FALLBACK_KEY = 'todo';
 export const TASK_FIELD = { STATUS: 'status', OWNER: 'owner', RANK: 'rank' } as const;

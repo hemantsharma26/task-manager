@@ -37,10 +37,10 @@ const user = await User.create({
   passwordHash: await hashPassword(DEMO.password),
 });
 
-type SeedTask = Pick<CreateTaskInput, 'title' | 'priority' | 'status' | 'dueDate'> & { description?: string; dueTime?: string | null };
+type SeedTask = Pick<CreateTaskInput, 'title' | 'priority' | 'status' | 'dueDate'> & { description?: string; dueTime?: string | null; startTime?: string | null };
 
 const tasks: SeedTask[] = [
-  { title: 'Fix login redirect bug', description: 'Users land on a blank page after the OAuth callback on Safari.', priority: 'high', status: 'in_progress', dueDate: isoOffset(1), dueTime: '17:30' },
+  { title: 'Fix login redirect bug', description: 'Users land on a blank page after the OAuth callback on Safari.', priority: 'high', status: 'in_progress', dueDate: isoOffset(1), startTime: '15:00', dueTime: '17:30' },
   { title: 'Submit quarterly expense report', description: 'Attach the cab and hotel receipts from the Pune trip.', priority: 'high', status: 'todo', dueDate: isoOffset(-2) },
   { title: 'Review pull request #142', priority: 'medium', status: 'todo', dueDate: isoOffset(0), dueTime: '23:30' },
   { title: 'Write API docs for the orders endpoints', description: 'Cover pagination, filters and error shapes.', priority: 'medium', status: 'todo', dueDate: isoOffset(5) },
@@ -58,7 +58,7 @@ const tasks: SeedTask[] = [
 ];
 
 // Go through the same service the API uses, so numbers, ranks and completedAt are set exactly as in real use.
-for (const t of tasks) await createTask(String(user._id), { description: '', dueTime: null, color: null, ...t });
+for (const t of tasks) await createTask(String(user._id), { description: '', dueTime: null, startTime: null, color: null, ...t });
 
 console.log(`Seeded ${tasks.length} tasks for ${DEMO.email} (password: ${DEMO.password})`);
 await Promise.all([disconnectDb(), cache.close()]);

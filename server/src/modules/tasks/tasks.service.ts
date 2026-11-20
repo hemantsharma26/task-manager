@@ -117,8 +117,12 @@ export async function updateTask(userId: string, id: string, input: UpdateTaskIn
   const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
   const dueTime = dueDate === null ? null : input.dueTime === undefined ? task.dueTime : input.dueTime;
   if (input.dueTime && dueDate === null) throw HttpError.badRequest(VALIDATION_MESSAGE.TIME_NEEDS_DATE);
+  // The window: a start needs an end, and the end must come after it. Removing the end removes the start with it.
+  const startTime = dueTime === null ? null : input.startTime === undefined ? task.startTime : input.startTime;
+  if (input.startTime && dueTime === null) throw HttpError.badRequest(VALIDATION_MESSAGE.START_NEEDS_END);
+  if (startTime !== null && dueTime !== null && startTime >= dueTime) throw HttpError.badRequest(VALIDATION_MESSAGE.END_AFTER_START);
 
-  task.set({ ...input, ...(input.description !== undefined ? note(input.description) : {}), dueDate, dueTime });
+  task.set({ ...input, ...(input.description !== undefined ? note(input.description) : {}), dueDate, dueTime, startTime });
   await task.save();
   await cache.invalidateUser(userId);
   return toTaskDTO(task);

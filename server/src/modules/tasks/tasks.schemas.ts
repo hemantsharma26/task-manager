@@ -30,12 +30,15 @@ export const createTaskSchema = z
     priority: priorityKey.optional(),
     dueDate: isoDate.nullable().default(null),
     dueTime: timeOfDay.nullable().default(null),
+    startTime: timeOfDay.nullable().default(null),
     color: cardColor.nullable().default(null),
   })
-  .refine((v) => v.dueTime === null || v.dueDate !== null, { path: ['dueTime'], message: VALIDATION_MESSAGE.TIME_NEEDS_DATE });
+  .refine((v) => v.dueTime === null || v.dueDate !== null, { path: ['dueTime'], message: VALIDATION_MESSAGE.TIME_NEEDS_DATE })
+  .refine((v) => v.startTime === null || v.dueTime !== null, { path: ['startTime'], message: VALIDATION_MESSAGE.START_NEEDS_END })
+  .refine((v) => v.startTime === null || v.dueTime === null || v.startTime < v.dueTime, { path: ['startTime'], message: VALIDATION_MESSAGE.END_AFTER_START });
 
 export const updateTaskSchema = z
-  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable(), color: cardColor.nullable() })
+  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable(), startTime: timeOfDay.nullable(), color: cardColor.nullable() })
   .partial()
   .refine((v) => Object.keys(v).length > 0, VALIDATION_MESSAGE.NOTHING_TO_UPDATE);
 

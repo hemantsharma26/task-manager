@@ -16,7 +16,7 @@ interface Props {
   onSubmit: (input: TaskInput, files: File[]) => Promise<unknown>;
 }
 
-const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, color: null };
+const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, startTime: null, color: null };
 
 type Errors = Partial<Record<keyof TaskInput | 'form', string>>;
 
@@ -157,7 +157,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
 
           <div className="field">
             <span>Due date</span>
-            <DateTimeField label="Due date" value={{ date: values.dueDate, time: values.dueTime }} align="right" onChange={(v) => setValues((cur) => ({ ...cur, dueDate: v.date, dueTime: v.time }))} />
+            <DateTimeField label="Due date" value={{ date: values.dueDate, startTime: values.startTime, time: values.dueTime }} align="right" onChange={(v) => setValues((cur) => ({ ...cur, dueDate: v.date, startTime: v.startTime, dueTime: v.time }))} />
             {errors.dueDate && <small className="field-error">{errors.dueDate}</small>}
           </div>
         </div>

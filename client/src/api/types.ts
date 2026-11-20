@@ -23,6 +23,8 @@ export interface Task {
   dueDate: string | null;
   /** HH:MM (24 hour) on the due date, or null. */
   dueTime: string | null;
+  /** Start of the window, HH:MM, or null. Always earlier than dueTime. */
+  startTime: string | null;
   /** Hex colour of the card, or null for the default look. */
   color: string | null;
   attachments: Attachment[];
@@ -80,6 +82,7 @@ export interface TaskInput {
   priority: TaskPriority;
   dueDate: string | null;
   dueTime: string | null;
+  startTime: string | null;
   color: string | null;
 }
 

@@ -34,7 +34,10 @@ export interface ITask {
   /** Calendar date as YYYY-MM-DD. Deliberately not a Date: it must mean the same day in every timezone. */
   dueDate: string | null;
   /** Wall-clock time on the due date, HH:MM (24 hour). Like the date it means the same hour for everybody. Only set together with a dueDate. */
+  /** Time the task is due by, i.e. the END of its window on the due date, HH:MM. Only set together with a dueDate. */
   dueTime: string | null;
+  /** Optional start of the window, HH:MM. Only set together with a dueTime, and always earlier than it. */
+  startTime: string | null;
   attachments: IAttachment[];
   completedAt: Date | null;
   createdAt: Date;
@@ -55,6 +58,7 @@ const taskSchema = new Schema<ITask>(
     priority: { type: String, required: true, maxlength: TASK_LIMITS.PRIORITY_KEY_MAX },
     dueDate: { type: String, default: null, match: PATTERN.ISO_DATE },
     dueTime: { type: String, default: null, match: PATTERN.TIME_24H },
+    startTime: { type: String, default: null, match: PATTERN.TIME_24H },
     attachments: {
       type: [
         new Schema<IAttachment>({

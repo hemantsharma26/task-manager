@@ -15,6 +15,7 @@ validation, ownership checks, ordering that survives drag and drop, caching, dat
 - **Columns are yours:** add, rename, reorder, mark as "counts as done" and delete (with a choice of where its tasks go). New accounts start with To do, In progress, Issue, Re-work and Done
 - **Priorities are yours too:** make as many as you like, with your own names, colours and order (the order is what "sort by priority" follows). New accounts start with Low, Medium and High
 - **Colours:** give any column (status) its own colour; it tints its cards, header and lozenges
+- **Time windows:** pick a date, then a deadline time or a start and end ("9:00 – 11:30 AM", with 30 min / 1 / 2 / 4 hour shortcuts and the length shown). The task turns red once the END of its window has passed, and the tasks of one day are listed in time order
 - **Due date and time** from a designed calendar: quick picks (Today, Tomorrow, Next Monday, In a week), month navigation, a time row with presets, and full keyboard control. A task due today at 9:00 turns overdue once 9:00 has passed
 - Issue keys (`TM-12`), coloured priority flags, status lozenges, due badges that turn red when overdue
 - **A notepad on every task:** a small word processor (headings, bold, italic, underline, strike, lists, quotes, code, links, text and highlight colours, fonts, sizes, alignment) on a ruled yellow pad. It saves by itself while you type
@@ -95,7 +96,7 @@ then `server/.env` (yours, never committed). The server validates everything at 
 ## Tests and checks
 
 ```bash
-npm test             # 263 API tests + 86 UI/unit tests
+npm test             # 270 API tests + 93 UI/unit tests
 npm run typecheck
 ```
 

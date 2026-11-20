@@ -103,7 +103,7 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
                         <PriorityIcon priority={t.priority} /> {nameOf(t.priority)}
                       </span>
                     </td>
-                    <td>{t.dueDate ? <DueBadge due={t.dueDate} time={t.dueTime} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
+                    <td>{t.dueDate ? <DueBadge due={t.dueDate} time={t.dueTime} startTime={t.startTime} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
                     <td>
                       <Avatar name={owner} size={22} />
                     </td>

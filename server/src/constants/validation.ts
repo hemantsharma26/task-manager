@@ -22,6 +22,8 @@ export const VALIDATION_MESSAGE = {
   COLOR: 'Use a colour like #0c66e4',
   TIME: 'Use the format HH:MM (24 hour)',
   TIME_NEEDS_DATE: 'Choose a due date before setting a time',
+  START_NEEDS_END: 'Set the end time too: a task window has a start and an end',
+  END_AFTER_START: 'The end time must be after the start time',
   PRIORITY_NAME_REQUIRED: 'Give the priority a name',
   PRIORITY_NAME_TOO_LONG: (max: number) => `Keep the name under ${max} characters`,
   NOTE_TOO_LONG: (max: number) => `The note is too long (max ${max} characters of text)`,

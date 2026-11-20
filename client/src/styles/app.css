@@ -1661,6 +1661,27 @@ dialog.dialog[open]::backdrop {
 .time-input {
   width: 140px;
 }
+.window {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-inputs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.window-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.duration {
+  font-size: 13px;
+}
 .pop-actions {
   display: flex;
   justify-content: space-between;

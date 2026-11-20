@@ -52,7 +52,7 @@ describe('CreateDialog', () => {
     render(<CreateDialog open onClose={onClose} onSubmit={onSubmit} />);
     await userEvent.type(screen.getByPlaceholderText(/what needs to be done/i), '  Call the bank  ');
     await userEvent.click(screen.getByRole('button', { name: /^create$/i }));
-    expect(onSubmit).toHaveBeenCalledWith({ title: 'Call the bank', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, color: null }, []);
+    expect(onSubmit).toHaveBeenCalledWith({ title: 'Call the bank', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, startTime: null, color: null }, []);
     expect(onClose).toHaveBeenCalled();
   });
 

@@ -26,7 +26,7 @@ export function CardBody({ task, today, owner }: CardBodyProps) {
       <p className="card-title">{task.title}</p>
       {task.dueDate && (
         <div className="card-due">
-          <DueBadge due={task.dueDate} time={task.dueTime} done={done} today={today} />
+          <DueBadge due={task.dueDate} time={task.dueTime} startTime={task.startTime} done={done} today={today} />
         </div>
       )}
       <div className="card-foot">

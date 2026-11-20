@@ -1,10 +1,13 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { addDays, addMonths, formatLongDate, formatMonthTitle, monthGrid, monthOf, nextMonday, parseDate, WEEKDAYS_MON_FIRST } from '../lib/calendar';
-import { formatTime, todayLocal } from '../lib/dates';
+import { addMinutes, durationMinutes, formatDuration, formatTime, formatTimeRange, todayLocal } from '../lib/dates';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, CloseIcon } from './Icons';
 
 export interface DateTime {
   date: string | null;
+  /** Start of the window (HH:MM), or null when there is only a deadline time. */
+  startTime: string | null;
+  /** End of the window, i.e. the time the task is due by. The task turns red after it. */
   time: string | null;
 }
 
@@ -17,13 +20,19 @@ interface Props {
 }
 
 const TIME_PRESETS = ['09:00', '12:00', '17:00', '18:00'] as const;
-const DEFAULT_TIME = '09:00';
+const DEFAULT_END = '17:00';
+const DURATIONS = [
+  { label: '30 min', minutes: 30 },
+  { label: '1 hour', minutes: 60 },
+  { label: '2 hours', minutes: 120 },
+  { label: '4 hours', minutes: 240 },
+] as const;
 
 function summary(value: DateTime, today: string) {
   if (!value.date) return null;
   const { y, m, d } = parseDate(value.date);
   const day = new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', ...(value.date.slice(0, 4) === today.slice(0, 4) ? {} : { year: 'numeric' }) }).format(new Date(y, m - 1, d));
-  return value.time ? `${day}, ${formatTime(value.time)}` : day;
+  return value.time ? `${day}, ${formatTimeRange(value.startTime, value.time)}` : day;
 }
 
 /**
@@ -40,6 +49,7 @@ export function DateTimeField({ value, onChange, label, align = 'left' }: Props)
   // The day the keyboard is on. It decides which month is shown.
   const [focusDay, setFocusDay] = useState(value.date ?? today);
   const [wantFocus, setWantFocus] = useState(false);
+  const [timeError, setTimeError] = useState('');
   const pop = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -100,7 +110,21 @@ export function DateTimeField({ value, onChange, label, align = 'left' }: Props)
     };
   }, [open]);
 
-  const pick = (date: string) => onChange({ date, time: value.time });
+  const pick = (date: string) => onChange({ date, startTime: value.startTime, time: value.time });
+
+  // The window must always be valid: moving the start past the end drags the end along, and an end before the start is refused.
+  const changeStart = (start: string) => {
+    if (!value.time) return;
+    const end = start >= value.time ? addMinutes(start, 60) : value.time;
+    if (end <= start) return setTimeError('There is no room for an end time after that start');
+    setTimeError('');
+    onChange({ date: value.date, startTime: start, time: end });
+  };
+  const changeEnd = (end: string) => {
+    if (value.startTime && end <= value.startTime) return setTimeError('The end time must be after the start time');
+    setTimeError('');
+    onChange({ date: value.date, startTime: value.startTime, time: end });
+  };
   const move = (to: string) => {
     setFocusDay(to);
     setWantFocus(true);
@@ -140,7 +164,7 @@ export function DateTimeField({ value, onChange, label, align = 'left' }: Props)
           <span>{text ?? 'Set due date'}</span>
         </button>
         {value.date && (
-          <button type="button" className="icon-btn datefield-clear" aria-label={`Clear ${label.toLowerCase()}`} onClick={() => onChange({ date: null, time: null })}>
+          <button type="button" className="icon-btn datefield-clear" aria-label={`Clear ${label.toLowerCase()}`} onClick={() => onChange({ date: null, startTime: null, time: null })}>
             <CloseIcon size={14} />
           </button>
         )}
@@ -205,26 +229,65 @@ export function DateTimeField({ value, onChange, label, align = 'left' }: Props)
 
           <div className="time-row">
             <label className="check" htmlFor={`${id}-time-on`}>
-              <input id={`${id}-time-on`} type="checkbox" checked={value.time !== null} disabled={!value.date} onChange={(e) => onChange({ date: value.date, time: e.target.checked ? DEFAULT_TIME : null })} />
+              <input id={`${id}-time-on`} type="checkbox" checked={value.time !== null} disabled={!value.date} onChange={(e) => { setTimeError(''); onChange({ date: value.date, startTime: null, time: e.target.checked ? DEFAULT_END : null }); }} />
               <ClockIcon />
               <span>Add a time</span>
             </label>
+
             {value.time !== null && (
-              <>
-                <input type="time" className="time-input" aria-label="Time" value={value.time} onChange={(e) => e.target.value && onChange({ date: value.date, time: e.target.value })} />
-                <div className="quick-dates">
-                  {TIME_PRESETS.map((t) => (
-                    <button key={t} type="button" className={`chip ${value.time === t ? 'is-on' : ''}`} onClick={() => onChange({ date: value.date, time: t })}>
-                      {formatTime(t)}
-                    </button>
-                  ))}
+              <div className="window">
+                <label className="check">
+                  <input type="checkbox" checked={value.startTime !== null} onChange={(e) => { setTimeError(''); onChange({ date: value.date, startTime: e.target.checked ? addMinutes(value.time!, -60) : null, time: value.time }); }} />
+                  <span>It has a start time too (a time window)</span>
+                </label>
+
+                <div className="window-inputs">
+                  {value.startTime !== null && (
+                    <label>
+                      <span>From</span>
+                      <input type="time" className="time-input" aria-label="Start time" value={value.startTime} onChange={(e) => e.target.value && changeStart(e.target.value)} />
+                    </label>
+                  )}
+                  <label>
+                    <span>{value.startTime !== null ? 'Until' : 'Due by'}</span>
+                    <input type="time" className="time-input" aria-label="End time" value={value.time} onChange={(e) => e.target.value && changeEnd(e.target.value)} />
+                  </label>
                 </div>
-              </>
+
+                {timeError && (
+                  <small className="field-error" role="alert">
+                    {timeError}
+                  </small>
+                )}
+
+                {value.startTime !== null ? (
+                  <>
+                    <p className="muted duration">
+                      Takes <strong>{formatDuration(durationMinutes(value.startTime, value.time))}</strong>. It turns red if it is not done by {formatTime(value.time)}.
+                    </p>
+                    <div className="quick-dates" role="group" aria-label="Length">
+                      {DURATIONS.map((d) => (
+                        <button key={d.label} type="button" className={`chip ${durationMinutes(value.startTime!, value.time!) === d.minutes ? 'is-on' : ''}`} onClick={() => { setTimeError(''); onChange({ date: value.date, startTime: value.startTime, time: addMinutes(value.startTime!, d.minutes) }); }}>
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="quick-dates" role="group" aria-label="Due by">
+                    {TIME_PRESETS.map((t) => (
+                      <button key={t} type="button" className={`chip ${value.time === t ? 'is-on' : ''}`} onClick={() => changeEnd(t)}>
+                        {formatTime(t)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
           <div className="pop-actions">
-            <button type="button" className="btn btn-subtle btn-sm" onClick={() => { onChange({ date: null, time: null }); setOpen(false); }}>
+            <button type="button" className="btn btn-subtle btn-sm" onClick={() => { onChange({ date: null, startTime: null, time: null }); setOpen(false); }}>
               Clear
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => { setOpen(false); trigger.current?.focus(); }}>

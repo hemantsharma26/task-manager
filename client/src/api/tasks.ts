@@ -126,6 +126,7 @@ export function useCreateTask() {
         priority: input.priority ?? 'medium',
         dueDate: input.dueDate ?? null,
         dueTime: input.dueTime ?? null,
+        startTime: input.startTime ?? null,
         color: input.color ?? null,
         attachments: [],
         completedAt: null,

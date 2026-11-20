@@ -18,6 +18,7 @@ export const toTaskDTO = (t: TaskLike) => ({
   priority: t.priority,
   dueDate: t.dueDate ?? null,
   dueTime: t.dueTime ?? null,
+  startTime: t.startTime ?? null,
   completedAt: t.completedAt ?? null,
   createdAt: t.createdAt,
   updatedAt: t.updatedAt,

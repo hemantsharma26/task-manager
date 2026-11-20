@@ -148,7 +148,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
 
             <dt>Due date</dt>
             <dd>
-              <DateTimeField label="Due date" value={{ date: task.dueDate, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time })} />
+              <DateTimeField label="Due date" value={{ date: task.dueDate, startTime: task.startTime, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time, startTime: v.startTime })} />
             </dd>
 
             <dt>Card colour</dt>
