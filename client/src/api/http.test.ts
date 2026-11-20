@@ -1,4 +1,4 @@
-import { ApiError, http, setUnauthorizedHandler } from './http';
+import { ApiError, http, setActiveWorkspace, setUnauthorizedHandler } from './http';
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
@@ -75,5 +75,23 @@ describe('http', () => {
     expect(getInit?.credentials).toBe('same-origin');
     expect(getInit?.headers).toBeUndefined();
     expect(postInit?.headers).toEqual({ 'Content-Type': 'application/json' });
+  });
+
+  it('names the board it is working on, except for account-level calls', async () => {
+    vi.mocked(fetch).mockResolvedValue(json(200, {}));
+    setActiveWorkspace('64b7f0c2a1b2c3d4e5f60718');
+    try {
+      await http('/tasks');
+      await http('/team/members');
+      await http('/workspaces');
+      await http('/auth/me');
+      await http('/invitations/abc');
+      const sent = vi.mocked(fetch).mock.calls.map(([, init]) => (init?.headers as Record<string, string> | undefined)?.['X-Workspace-Id']);
+      expect(sent).toEqual(['64b7f0c2a1b2c3d4e5f60718', '64b7f0c2a1b2c3d4e5f60718', undefined, undefined, undefined]);
+    } finally {
+      setActiveWorkspace(null);
+    }
+    await http('/tasks');
+    expect(vi.mocked(fetch).mock.calls.at(-1)![1]?.headers).toBeUndefined();
   });
 });

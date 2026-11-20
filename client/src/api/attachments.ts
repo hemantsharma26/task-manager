@@ -1,9 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patchTaskInCaches } from './cache';
-import { ApiError, http, refreshAccess } from './http';
+import { ApiError, getActiveWorkspace, http, refreshAccess } from './http';
 import type { Task } from './types';
 
-export const fileUrl = (taskId: string, attachmentId: string) => `/api/tasks/${taskId}/attachments/${attachmentId}`;
+/** Images and videos are loaded by the browser itself, which cannot send headers, so the board goes in the URL. */
+export const fileUrl = (taskId: string, attachmentId: string) => {
+  const board = getActiveWorkspace();
+  return `/api/tasks/${taskId}/attachments/${attachmentId}${board ? `?workspace=${board}` : ''}`;
+};
 
 /**
  * Uploads files to a task. XMLHttpRequest rather than fetch, because it reports how much has been sent, which a progress bar
@@ -17,6 +21,8 @@ export function uploadFiles(taskId: string, files: File[], onProgress?: (fractio
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/tasks/${taskId}/attachments`);
     xhr.withCredentials = true;
+    const board = getActiveWorkspace();
+    if (board) xhr.setRequestHeader('X-Workspace-Id', board);
     xhr.responseType = 'json';
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
     xhr.onerror = () => reject(new ApiError(0, 'NETWORK', 'Upload failed. Check your connection and try again.'));

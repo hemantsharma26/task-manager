@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/http';
 import { useColumns } from '../api/columns';
+import { useAuth } from '../api/auth';
 import { usePriorities } from '../api/priorities';
+import { useMembers } from '../api/team';
+import { useWorkspace } from '../api/workspace';
 import type { TaskInput } from '../api/types';
+import { AssigneePicker } from './AssigneePicker';
 import { ColorPicker } from './ColorPicker';
 import { DateTimeField } from './DateTimeField';
 import { FilePicker } from './FilePicker';
@@ -16,7 +20,7 @@ interface Props {
   onSubmit: (input: TaskInput, files: File[]) => Promise<unknown>;
 }
 
-const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, startTime: null, color: null };
+const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, startTime: null, color: null, assignees: [] };
 
 type Errors = Partial<Record<keyof TaskInput | 'form', string>>;
 
@@ -33,6 +37,9 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const { data: columns = [] } = useColumns();
   const { data: priorities = [] } = usePriorities();
+  const { user } = useAuth();
+  const { can } = useWorkspace();
+  const members = useMembers().data?.members ?? [];
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -131,6 +138,15 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
           </span>
           <ColorPicker label="Card colour" value={values.color} allowDefault onChange={(color) => set('color', color)} />
         </div>
+
+        {can('task.assign') && (
+          <div className="field">
+            <span>
+              Assignees <span className="muted">(optional)</span>
+            </span>
+            <AssigneePicker members={members} value={values.assignees} meId={user?.id} onChange={(ids) => set('assignees', ids)} />
+          </div>
+        )}
 
         <div className="field-row">
           <label className="field">

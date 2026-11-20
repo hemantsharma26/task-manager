@@ -43,6 +43,8 @@ export const TEAM = {
 } as const;
 
 export const TEAM_HEADER = { WORKSPACE_ID: 'X-Workspace-Id' } as const;
+/** The same thing as a query parameter, for links the browser loads by itself (images, videos, PDFs). */
+export const TEAM_QUERY = { WORKSPACE_ID: 'workspace' } as const;
 export const ASSIGNEE_FILTER = { ME: 'me', UNASSIGNED: 'unassigned' } as const;
 
 export const TEAM_EVENT = {

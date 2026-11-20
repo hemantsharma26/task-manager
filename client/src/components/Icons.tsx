@@ -127,3 +127,32 @@ export const UploadIcon = ({ size = 16 }: P) => (
     <path d="M8 11V2.5M4.5 6L8 2.5 11.5 6M2.5 13.5h11" />
   </svg>
 );
+
+export const UsersIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="6" cy="5.5" r="2.4" />
+    <path d="M1.8 13.2c.4-2.3 2.2-3.7 4.2-3.7s3.8 1.4 4.2 3.7" />
+    <circle cx="11.4" cy="6.2" r="1.9" />
+    <path d="M11.6 9.6c1.6.2 2.9 1.3 3.2 3.2" />
+  </svg>
+);
+
+export const ChevronDownIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M4 6.2 8 10l4-3.8" />
+  </svg>
+);
+
+export const UserIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="8" cy="5.6" r="2.6" />
+    <path d="M3 13.4c.5-2.5 2.6-4 5-4s4.5 1.5 5 4" />
+  </svg>
+);
+
+export const MailIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.4" />
+    <path d="m2.4 4.4 5.6 4.4 5.6-4.4" />
+  </svg>
+);

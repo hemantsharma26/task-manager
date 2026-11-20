@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useColumns } from '../api/columns';
 import { usePriorities } from '../api/priorities';
+import { useMembers } from '../api/team';
 import type { DueFilter, ListFilters } from '../api/types';
 import { useDebounced } from '../hooks/useDebounced';
 
@@ -24,6 +25,7 @@ const DUE_OPTIONS: { value: DueFilter | ''; label: string }[] = [
 export function FilterBar({ filters, onChange, onReset, isFiltered, showStatus }: Props) {
   const { data: columns = [] } = useColumns();
   const { data: priorities = [] } = usePriorities();
+  const members = useMembers().data?.members ?? [];
   // The input is edited locally and pushed to the URL after a pause, so we don't fire a request (and a
   // history entry) on every keystroke. lastSent stops the two effects below from echoing each other and
   // overwriting what the user is still typing.
@@ -73,6 +75,20 @@ export function FilterBar({ filters, onChange, onReset, isFiltered, showStatus }
           {priorities.map((p) => (
             <option key={p.key} value={p.key}>
               {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        <span className="sr-only">Assignee</span>
+        <select className="select" value={filters.assignee ?? ''} onChange={(e) => onChange({ assignee: e.target.value || undefined })}>
+          <option value="">Assignee</option>
+          <option value="me">Assigned to me</option>
+          <option value="unassigned">Unassigned</option>
+          {members.map((m) => (
+            <option key={m.userId} value={m.userId}>
+              {m.name}
             </option>
           ))}
         </select>

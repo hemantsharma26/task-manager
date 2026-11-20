@@ -3,7 +3,8 @@ import { nowTimeLocal, todayLocal } from '../lib/dates';
 import { appendToColumnCaches, findTaskInCaches, moveTaskBetweenColumnCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot, TASKS_KEY } from './cache';
 import { http } from './http';
 import { COLUMNS_KEY } from './columns';
-import type { Column, CommonFilters, ListFilters, Task, TaskInput, TaskPage, TaskStats, TaskStatus } from './types';
+import { MEMBERS_KEY } from './team';
+import type { Column, CommonFilters, ListFilters, Member, Person, Task, TaskInput, TaskPage, TaskStats, TaskStatus } from './types';
 
 export const COLUMN_PAGE_SIZE = 20;
 export const LIST_PAGE_SIZE = 15;
@@ -19,11 +20,21 @@ export const keys = {
 function params(base: Record<string, string>, f: CommonFilters) {
   const p = new URLSearchParams(base);
   if (f.priority) p.set('priority', f.priority);
+  if (f.assignee) p.set('assignee', f.assignee);
   if (f.due) p.set('due', f.due);
   // With the client's current time the server can count "due today at 9:00" as overdue once 9:00 has passed.
   if (f.due === 'overdue') p.set('nowTime', nowTimeLocal());
   if (f.q) p.set('q', f.q);
   return p;
+}
+
+/** The people for some ids, from the team already on screen (so an assignment shows at once, before the server answers). */
+function peopleFor(qc: ReturnType<typeof useQueryClient>, ids: string[]): Person[] {
+  const members = qc.getQueryData<{ members: Member[] }>(MEMBERS_KEY)?.members ?? [];
+  return ids.flatMap((id) => {
+    const m = members.find((x) => x.userId === id);
+    return m ? [{ id: m.userId, name: m.name, email: m.email }] : [];
+  });
 }
 
 /** One board column. Loads COLUMN_PAGE_SIZE cards, then more on demand, always in rank order. */
@@ -128,6 +139,7 @@ export function useCreateTask() {
         dueTime: input.dueTime ?? null,
         startTime: input.startTime ?? null,
         color: input.color ?? null,
+        assignees: peopleFor(qc, input.assignees ?? []),
         attachments: [],
         completedAt: null,
         createdAt: now,
@@ -153,7 +165,8 @@ export function useUpdateTask() {
       const before = findTaskInCaches(qc, id);
       // A status change moves the card to the other column straight away, instead of leaving it behind until the refetch.
       if (before && changes.status && changes.status !== before.status) moveTaskBetweenColumnCaches(qc, before, changes.status);
-      patchTaskInCaches(qc, id, changes);
+      const { assignees, ...rest } = changes;
+      patchTaskInCaches(qc, id, { ...rest, ...(assignees ? { assignees: peopleFor(qc, assignees) } : {}) });
       return { snapshot };
     },
     onError: (_e, _v, ctx) => restoreSnapshot(qc, ctx?.snapshot),
@@ -162,7 +175,8 @@ export function useUpdateTask() {
       patchTaskInCaches(qc, task.id, task);
       // Title and description edits change nothing about where the card sits or the counts, so no refetch.
       // Status moves it to another column, a due date changes the overdue count, and priority can change filter results.
-      if ('status' in changes || 'dueDate' in changes || 'priority' in changes) {
+      // Assignees matter to the "assigned to me" filter, so lists are refreshed for them too.
+      if ('status' in changes || 'dueDate' in changes || 'priority' in changes || 'assignees' in changes) {
         void refresh.columns('all', 'status' in changes || 'dueDate' in changes);
       }
     },

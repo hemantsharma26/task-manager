@@ -10,6 +10,13 @@ export interface User {
   email: string;
 }
 
+/** Someone a task can be assigned to. */
+export interface Person {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Task {
   id: string;
   /** Per-user issue number, shown as the key (TM-12). */
@@ -27,6 +34,8 @@ export interface Task {
   startTime: string | null;
   /** Hex colour of the card, or null for the default look. */
   color: string | null;
+  /** Everyone the task is assigned to. */
+  assignees: Person[];
   attachments: Attachment[];
   completedAt: string | null;
   createdAt: string;
@@ -39,6 +48,8 @@ export type SortField = 'createdAt' | 'dueDate' | 'priority' | 'title' | 'rank';
 /** What both the board and the list share. The board has no status filter: its columns are the statuses. */
 export interface CommonFilters {
   priority?: TaskPriority;
+  /** "me", "unassigned", or one person's id. */
+  assignee?: string;
   due?: DueFilter;
   q: string;
 }
@@ -84,6 +95,8 @@ export interface TaskInput {
   dueTime: string | null;
   startTime: string | null;
   color: string | null;
+  /** Ids of the people it is assigned to. */
+  assignees: string[];
 }
 
 /** A priority. Which ones exist, their names, colours and order are up to the user. */
@@ -103,4 +116,39 @@ export interface Attachment {
   mime: string;
   kind: AttachmentKind;
   size: number;
+}
+
+export type Role = 'owner' | 'admin' | 'editor' | 'viewer';
+export type MemberRole = Exclude<Role, 'owner'>;
+
+/** A board the signed-in person can open: their own, or one they were invited to. */
+export interface Workspace {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+export interface Member {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  isOwner: boolean;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: MemberRole;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** What the link in an invitation email is for. */
+export interface InvitationInfo {
+  boardName: string;
+  invitedBy: string;
+  role: MemberRole;
+  roleLabel: string;
+  email: string;
 }

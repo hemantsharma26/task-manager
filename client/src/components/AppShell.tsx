@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { useAuth, useSignOut } from '../api/auth';
+import { useMembers } from '../api/team';
+import { useWorkspace } from '../api/workspace';
 import { useUploadFiles } from '../api/attachments';
 import { useCreateTask, useStats } from '../api/tasks';
 import { useSelectedIssue, useTaskFilters } from '../hooks/useTaskFilters';
 import { Avatar } from './Avatar';
+import { BoardSwitcher } from './BoardSwitcher';
+import { TeamDialog } from './TeamDialog';
 import { AccountDialog } from './AccountDialog';
 import { PriorityDialog } from './PriorityDialog';
 import { CreateDialog } from './CreateDialog';
-import { BoardIcon, FlagIcon, ListIcon, PlusIcon } from './Icons';
+import { BoardIcon, FlagIcon, ListIcon, PlusIcon, UserIcon, UsersIcon } from './Icons';
 import { IssueDialog } from './IssueDialog';
 import { useToast } from './Toast';
 import { prefetchListPage } from '../pages/lazy';
@@ -32,14 +36,18 @@ export function AppShell() {
   const [menu, setMenu] = useState(false);
   const [account, setAccount] = useState(false);
   const [priorities, setPriorities] = useState(false);
+  const [team, setTeam] = useState(false);
+  const { can } = useWorkspace();
+  const members = useMembers().data?.members;
 
   if (!user) return null;
 
-  const quick: { label: string; count?: number; active: boolean; apply: () => void; icon?: boolean }[] = [
-    { label: 'All issues', count: stats?.total, active: !filters.priority && !filters.due, apply: () => reset() },
-    { label: 'Overdue', count: stats?.overdue, active: filters.due === 'overdue', apply: () => update({ due: 'overdue', priority: undefined }) },
-    { label: 'Due this week', active: filters.due === 'week', apply: () => update({ due: 'week', priority: undefined }) },
-    { label: 'High priority', active: filters.priority === 'high', icon: true, apply: () => update({ priority: 'high', due: undefined }) },
+  const quick: { label: string; count?: number; active: boolean; apply: () => void; icon?: boolean; person?: boolean }[] = [
+    { label: 'All issues', count: stats?.total, active: !filters.priority && !filters.due && !filters.assignee, apply: () => reset() },
+    { label: 'Assigned to me', active: filters.assignee === 'me', person: true, apply: () => update({ assignee: 'me', priority: undefined, due: undefined }) },
+    { label: 'Overdue', count: stats?.overdue, active: filters.due === 'overdue', apply: () => update({ due: 'overdue', priority: undefined, assignee: undefined }) },
+    { label: 'Due this week', active: filters.due === 'week', apply: () => update({ due: 'week', priority: undefined, assignee: undefined }) },
+    { label: 'High priority', active: filters.priority === 'high', icon: true, apply: () => update({ priority: 'high', due: undefined, assignee: undefined }) },
   ];
 
   return (
@@ -49,9 +57,11 @@ export function AppShell() {
           <span className="brand-mark" aria-hidden="true">✓</span>
           <span className="brand-name">Task Manager</span>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-          <PlusIcon /> Create
-        </button>
+        {can('task.create') && (
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <PlusIcon /> Create
+          </button>
+        )}
 
         <div className="topnav-right">
           <div className="usermenu">
@@ -78,13 +88,7 @@ export function AppShell() {
 
       <div className="shell-body">
         <aside className="sidebar" aria-label="Sidebar">
-          <div className="project">
-            <span className="project-icon" aria-hidden="true">TM</span>
-            <div>
-              <strong>My tasks</strong>
-              <span className="muted">Personal project</span>
-            </div>
-          </div>
+          <BoardSwitcher />
 
           <nav className="side-nav" aria-label="Views">
             <NavLink to={{ pathname: '/board', search }} className="side-link">
@@ -99,7 +103,7 @@ export function AppShell() {
           <div className="side-nav">
             {quick.map((q) => (
               <button key={q.label} type="button" className={`side-link side-btn ${q.active ? 'active' : ''}`} onClick={q.apply} aria-pressed={q.active}>
-                {q.icon ? <FlagIcon /> : null}
+                {q.icon ? <FlagIcon /> : q.person ? <UserIcon /> : null}
                 <span>{q.label}</span>
                 {q.count !== undefined && <span className={`count ${q.label === 'Overdue' && q.count > 0 ? 'count-danger' : ''}`}>{q.count}</span>}
               </button>
@@ -107,10 +111,17 @@ export function AppShell() {
           </div>
           <p className="side-label">Customise</p>
           <div className="side-nav">
-            <button type="button" className="side-link side-btn" onClick={() => setPriorities(true)}>
-              <FlagIcon />
-              <span>Priorities</span>
+            <button type="button" className="side-link side-btn" onClick={() => setTeam(true)}>
+              <UsersIcon />
+              <span>Team</span>
+              {members && <span className="count">{members.length}</span>}
             </button>
+            {can('board.manage') && (
+              <button type="button" className="side-link side-btn" onClick={() => setPriorities(true)}>
+                <FlagIcon />
+                <span>Priorities</span>
+              </button>
+            )}
           </div>
         </aside>
 
@@ -141,7 +152,8 @@ export function AppShell() {
       />
       <AccountDialog open={account} onClose={() => setAccount(false)} />
       <PriorityDialog open={priorities} onClose={() => setPriorities(false)} />
-      <IssueDialog id={selected} owner={user.name} onClose={() => select(null)} />
+      <TeamDialog open={team} onClose={() => setTeam(false)} />
+      <IssueDialog id={selected} onClose={() => select(null)} />
     </div>
   );
 }

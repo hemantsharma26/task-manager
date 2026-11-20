@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useWorkspace } from '../../api/workspace';
 import { useMoveColumn, useUpdateColumn } from '../../api/columns';
 import type { Column as ColumnModel, Task } from '../../api/types';
 import { toneFor } from '../../lib/tone';
@@ -25,7 +26,6 @@ interface Props {
   hasMore: boolean;
   loadingMore: boolean;
   today: string;
-  owner: string;
   /** True only while this column is first loading, so its cards ease in once and never again on refetches or drops. */
   staggerIn: boolean;
   onOpen: (id: string) => void;
@@ -33,11 +33,12 @@ interface Props {
   onDelete: (column: ColumnModel) => void;
 }
 
-export function Column({ column, index, columns, editable, tasks, total, loading, stale, error, onRetry, hasMore, loadingMore, today, owner, staggerIn, onOpen, onLoadMore, onDelete }: Props) {
+export function Column({ column, index, columns, editable, tasks, total, loading, stale, error, onRetry, hasMore, loadingMore, today, staggerIn, onOpen, onLoadMore, onDelete }: Props) {
   // The column itself is a drop target too, so a card can be dropped into an empty column.
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
   const remaining = Math.max(0, total - tasks.length);
   const accent = toneFor(column.key, column.isDone, column.color).accent;
+  const { can } = useWorkspace();
 
   return (
     <section className="column" data-status={column.key} data-accent={accent ? '' : undefined} style={{ ['--accent' as string]: accent }} aria-label={column.name}>
@@ -52,7 +53,7 @@ export function Column({ column, index, columns, editable, tasks, total, loading
             </>
           ) : (
             tasks.map((t, i) => (
-              <Card key={t.id} task={t} today={today} owner={owner} onOpen={onOpen} index={i} enter={t.id.startsWith('temp-') ? 'pop' : staggerIn ? 'stagger' : undefined} />
+              <Card key={t.id} task={t} today={today} onOpen={onOpen} index={i} enter={t.id.startsWith('temp-') ? 'pop' : staggerIn ? 'stagger' : undefined} />
             ))
           )}
         </SortableContext>
@@ -75,7 +76,7 @@ export function Column({ column, index, columns, editable, tasks, total, loading
         )}
       </div>
 
-      <QuickCreate status={column.key} />
+      {can('task.create') && <QuickCreate status={column.key} />}
     </section>
   );
 }
@@ -83,6 +84,7 @@ export function Column({ column, index, columns, editable, tasks, total, loading
 function ColumnHeader({ column, index, columns, total, editable, onDelete }: Pick<Props, 'column' | 'index' | 'columns' | 'total' | 'editable' | 'onDelete'>) {
   const update = useUpdateColumn();
   const move = useMoveColumn();
+  const { can } = useWorkspace();
   const { notify } = useToast();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(column.name);
@@ -141,7 +143,7 @@ function ColumnHeader({ column, index, columns, total, editable, onDelete }: Pic
           ✓
         </span>
       )}
-      {editable && (
+      {editable && can('board.manage') && (
         <ColumnMenu
           column={column}
           index={index}

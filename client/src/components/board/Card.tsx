@@ -5,7 +5,8 @@ import { isTempId } from '../../api/cache';
 import { useColumnLookup } from '../../api/columns';
 import { toneFor } from '../../lib/tone';
 import type { Task } from '../../api/types';
-import { Avatar } from '../Avatar';
+import { useWorkspace } from '../../api/workspace';
+import { AvatarStack } from '../AvatarStack';
 import { DueBadge } from '../DueBadge';
 import { mix } from '../../lib/color';
 import { CheckIcon, GripIcon, PaperclipIcon } from '../Icons';
@@ -14,11 +15,10 @@ import { PriorityIcon } from '../PriorityIcon';
 interface CardBodyProps {
   task: Task;
   today: string;
-  owner: string;
 }
 
 /** The card face. Also used (without the sortable wrapper) as the floating copy while dragging. */
-export function CardBody({ task, today, owner }: CardBodyProps) {
+export function CardBody({ task, today }: CardBodyProps) {
   const { isDone } = useColumnLookup();
   const done = isDone(task.status);
   return (
@@ -47,7 +47,7 @@ export function CardBody({ task, today, owner }: CardBodyProps) {
             </span>
           )}
         </span>
-        <Avatar name={owner} size={22} />
+        <AvatarStack people={task.assignees ?? []} size={22} />
       </div>
     </>
   );
@@ -62,7 +62,10 @@ interface CardProps extends CardBodyProps {
 
 // memo: during a drag the board re-renders on every pointer move, and only the cards that actually
 // changed (their task object) should pay for it.
-export const Card = memo(function Card({ task, today, owner, onOpen, enter, index }: CardProps) {
+export const Card = memo(function Card({ task, today, onOpen, enter, index }: CardProps) {
+  // People who may only look cannot pick a card up.
+  const { can } = useWorkspace();
+  const draggable = can('task.edit');
   // A card that is still being saved has no real id yet, so it can be neither opened nor dragged.
   const pending = isTempId(task.id);
   const { isDone, colorOf } = useColumnLookup();
@@ -70,7 +73,7 @@ export const Card = memo(function Card({ task, today, owner, onOpen, enter, inde
   const accent = toneFor(task.status, done, colorOf(task.status)).accent;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    disabled: pending,
+    disabled: pending || !draggable,
     // The other cards slide out of the way on the same curve the floating card lands with.
     transition: { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' },
   });
@@ -108,7 +111,7 @@ export const Card = memo(function Card({ task, today, owner, onOpen, enter, inde
       onClick={() => !pending && onOpen(task.id)}
       aria-label={`${task.key} ${task.title}`}
     >
-      {!pending && (
+      {!pending && draggable && (
         <span
           className="card-handle"
           aria-hidden="true"
@@ -118,7 +121,7 @@ export const Card = memo(function Card({ task, today, owner, onOpen, enter, inde
           <GripIcon />
         </span>
       )}
-      <CardBody task={task} today={today} owner={owner} />
+      <CardBody task={task} today={today} />
     </div>
   );
 });

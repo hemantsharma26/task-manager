@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { ACTION, ERROR_MESSAGE, PATTERN, ROLE, ROLE_ACTIONS, TEAM_HEADER, type Action, type Role } from '../../constants/index.js';
+import { ACTION, ERROR_MESSAGE, PATTERN, ROLE, ROLE_ACTIONS, TEAM_HEADER, TEAM_QUERY, type Action, type Role } from '../../constants/index.js';
 import { Membership } from '../../modules/team/membership.model.js';
 import { HttpError } from '../errors/http-error.js';
 
@@ -18,7 +18,8 @@ declare module 'express-serve-static-core' {
  */
 export const resolveWorkspace: RequestHandler = async (req, _res, next) => {
   try {
-    const requested = req.get(TEAM_HEADER.WORKSPACE_ID);
+    const fromQuery = req.method === 'GET' ? req.query[TEAM_QUERY.WORKSPACE_ID] : undefined;
+    const requested = req.get(TEAM_HEADER.WORKSPACE_ID) ?? (typeof fromQuery === 'string' ? fromQuery : undefined);
     if (!requested || requested === req.userId) {
       req.workspaceId = req.userId;
       req.workspaceRole = ROLE.OWNER;

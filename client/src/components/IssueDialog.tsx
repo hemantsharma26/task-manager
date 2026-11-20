@@ -3,9 +3,14 @@ import { ApiError } from '../api/http';
 import { useDeleteTask, useTask, useUpdateTask } from '../api/tasks';
 import { useColumnLookup } from '../api/columns';
 import { usePriorities } from '../api/priorities';
+import { useMembers } from '../api/team';
+import { useWorkspace } from '../api/workspace';
+import { useAuth } from '../api/auth';
+import { todayLocal } from '../lib/dates';
 import type { Task, TaskInput } from '../api/types';
 import { toneFor } from '../lib/tone';
-import { Avatar } from './Avatar';
+import { AssigneePicker } from './AssigneePicker';
+import { DueBadge } from './DueBadge';
 import { AttachmentGallery } from './AttachmentGallery';
 import { ColorPicker } from './ColorPicker';
 import { DateTimeField } from './DateTimeField';
@@ -16,13 +21,12 @@ import { useToast } from './Toast';
 
 interface Props {
   id: string | null;
-  owner: string;
   onClose: () => void;
 }
 
 const when = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
-export function IssueDialog({ id, owner, onClose }: Props) {
+export function IssueDialog({ id, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const open = !!id;
   // Keep showing the last issue while the dialog fades out, so its content does not vanish mid-animation.
@@ -40,12 +44,12 @@ export function IssueDialog({ id, owner, onClose }: Props) {
   return (
     <dialog ref={ref} className="dialog dialog-lg" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
       {/* key: switching to another issue starts with fresh local edit state */}
-      {shown && <IssueBody key={shown} id={shown} owner={owner} onClose={onClose} />}
+      {shown && <IssueBody key={shown} id={shown} onClose={onClose} />}
     </dialog>
   );
 }
 
-function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose: () => void }) {
+function IssueBody({ id, onClose }: { id: string; onClose: () => void }) {
   const { data: task, isError, error, isPending } = useTask(id);
   const update = useUpdateTask();
   const remove = useDeleteTask();
@@ -53,6 +57,13 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
   const { columns, isDone, colorOf } = useColumnLookup();
   const { data: priorities = [] } = usePriorities();
   const [confirming, setConfirming] = useState(false);
+  const { user } = useAuth();
+  const { can } = useWorkspace();
+  const members = useMembers().data?.members ?? [];
+  // What this person may do on this board decides which fields they can change.
+  const canEdit = can('task.edit');
+  const canDelete = can('task.delete');
+  const canAssign = can('task.assign');
 
   const save = (changes: Partial<TaskInput>) =>
     update.mutate({ id, changes }, { onError: (e) => notify('error', e instanceof ApiError ? (e.fields[0]?.message ?? e.message) : 'Could not save the change') });
@@ -79,7 +90,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
           <span className="issue-type" aria-hidden="true">✓</span> {task.key}
         </span>
         <div className="issue-head-actions">
-          {confirming ? (
+          {!canDelete ? null : confirming ? (
             <>
               <span className="muted">Delete {task.key}?</span>
               <button
@@ -109,9 +120,9 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
 
       <div className="issue-grid">
         <div className="issue-main">
-          <EditableTitle task={task} onSave={(title) => save({ title })} />
-          <EditableNote task={task} onSave={(description) => save({ description })} />
-          <AttachmentGallery task={task} />
+          <EditableTitle task={task} readOnly={!canEdit} onSave={(title) => save({ title })} />
+          <EditableNote task={task} readOnly={!canEdit} onSave={(description) => save({ description })} />
+          <AttachmentGallery task={task} canEdit={canEdit} />
         </div>
 
         <aside className="issue-side" aria-label="Details">
@@ -124,6 +135,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
                 style={{ background: toneFor(task.status, isDone(task.status), colorOf(task.status)).bg, color: toneFor(task.status, isDone(task.status), colorOf(task.status)).fg }}
                 value={task.status}
                 aria-label="Status"
+                disabled={!canEdit}
                 onChange={(e) => save({ status: e.target.value })}
               >
                 {columns.map((c) => (
@@ -137,7 +149,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
             <dt>Priority</dt>
             <dd className="with-icon">
               <PriorityIcon priority={task.priority} />
-              <select className="select select-plain" value={task.priority} aria-label="Priority" onChange={(e) => save({ priority: e.target.value })}>
+              <select className="select select-plain" value={task.priority} aria-label="Priority" disabled={!canEdit} onChange={(e) => save({ priority: e.target.value })}>
                 {priorities.map((p) => (
                   <option key={p.key} value={p.key}>
                     {p.name}
@@ -148,17 +160,33 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
 
             <dt>Due date</dt>
             <dd>
-              <DateTimeField label="Due date" value={{ date: task.dueDate, startTime: task.startTime, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time, startTime: v.startTime })} />
+              {canEdit ? (
+                <DateTimeField label="Due date" value={{ date: task.dueDate, startTime: task.startTime, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time, startTime: v.startTime })} />
+              ) : task.dueDate ? (
+                <DueBadge due={task.dueDate} time={task.dueTime} startTime={task.startTime} done={isDone(task.status)} today={todayLocal()} />
+              ) : (
+                <span className="muted">None</span>
+              )}
             </dd>
 
-            <dt>Card colour</dt>
-            <dd className="color-dd">
-              <ColorPicker label="Card colour" value={task.color} allowDefault onChange={(color) => save({ color })} />
-            </dd>
+            {canEdit && (
+              <>
+                <dt>Card colour</dt>
+                <dd className="color-dd">
+                  <ColorPicker label="Card colour" value={task.color} allowDefault onChange={(color) => save({ color })} />
+                </dd>
+              </>
+            )}
 
-            <dt>Owner</dt>
-            <dd className="with-icon">
-              <Avatar name={owner} size={22} /> {owner}
+            <dt>Assignees</dt>
+            <dd>
+              <AssigneePicker
+                members={members}
+                value={task.assignees.map((a) => a.id)}
+                meId={user?.id}
+                disabled={!canAssign}
+                onChange={(ids) => save({ assignees: ids })}
+              />
             </dd>
           </dl>
 
@@ -173,7 +201,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
   );
 }
 
-function EditableTitle({ task, onSave }: { task: Task; onSave: (title: string) => void }) {
+function EditableTitle({ task, onSave, readOnly }: { task: Task; onSave: (title: string) => void; readOnly: boolean }) {
   const [value, setValue] = useState(task.title);
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -196,6 +224,7 @@ function EditableTitle({ task, onSave }: { task: Task; onSave: (title: string) =
       rows={1}
       value={value}
       maxLength={120}
+      readOnly={readOnly}
       aria-label="Title"
       onChange={(e) => setValue(e.target.value.replace(/\n/g, ' '))}
       onBlur={commit}
@@ -215,7 +244,7 @@ function EditableTitle({ task, onSave }: { task: Task; onSave: (title: string) =
 }
 
 /** The task's notepad. It saves by itself a moment after you stop typing, and when you click away. */
-function EditableNote({ task, onSave }: { task: Task; onSave: (html: string) => void }) {
+function EditableNote({ task, onSave, readOnly }: { task: Task; onSave: (html: string) => void; readOnly: boolean }) {
   const [html, setHtml] = useState(task.description);
   const [state, setState] = useState<'saved' | 'saving' | 'editing'>('saved');
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -244,10 +273,11 @@ function EditableNote({ task, onSave }: { task: Task; onSave: (html: string) => 
   return (
     <section className="issue-desc">
       <h3>
-        Notes <span className={`save-state save-${state}`}>{state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : 'Editing…'}</span>
+        Notes {!readOnly && <span className={`save-state save-${state}`}>{state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : 'Editing…'}</span>}
       </h3>
       <NoteEditor
         label="Notes"
+        readOnly={readOnly}
         value={html}
         placeholder="Write your notes here: headings, lists, colours, fonts…"
         minHeight={200}

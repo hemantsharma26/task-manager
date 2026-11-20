@@ -7,12 +7,11 @@ import { PriorityIcon } from './PriorityIcon';
 import { usePriorityLookup } from '../api/priorities';
 import { Pagination } from './Pagination';
 import { StatusLozenge } from './Lozenge';
-import { Avatar } from './Avatar';
+import { AvatarStack } from './AvatarStack';
 import { useColumnLookup } from '../api/columns';
 
 interface Props {
   filters: ListFilters;
-  owner: string;
   isFiltered: boolean;
   onChange: (patch: Partial<ListFilters>) => void;
   onReset: () => void;
@@ -25,10 +24,10 @@ const COLUMNS: { label: string; sort?: SortField; defaultOrder?: 'asc' | 'desc' 
   { label: 'Status' },
   { label: 'Priority', sort: 'priority', defaultOrder: 'desc' },
   { label: 'Due date', sort: 'dueDate', defaultOrder: 'asc' },
-  { label: 'Owner' },
+  { label: 'Assignees' },
 ];
 
-export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen }: Props) {
+export function ListView({ filters, isFiltered, onChange, onReset, onOpen }: Props) {
   const { data, isPending, isError, error, refetch, isPlaceholderData } = useTasks(filters);
   const today = todayLocal();
   const { isDone } = useColumnLookup();
@@ -105,7 +104,7 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
                     </td>
                     <td>{t.dueDate ? <DueBadge due={t.dueDate} time={t.dueTime} startTime={t.startTime} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
                     <td>
-                      <Avatar name={owner} size={22} />
+                      <AvatarStack people={t.assignees ?? []} size={22} />
                     </td>
                   </tr>
                 ))}

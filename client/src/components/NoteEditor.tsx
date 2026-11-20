@@ -15,6 +15,8 @@ interface Props {
   placeholder?: string;
   label: string;
   minHeight?: number;
+  /** Shows the note without a toolbar and does not let it be changed. */
+  readOnly?: boolean;
 }
 
 const SAFE_LINK = /^(https?:\/\/|mailto:)/i;
@@ -41,7 +43,7 @@ function Btn({ label, active, onClick, children, disabled }: { label: string; ac
  * The notepad of a task: a small word processor (headings, bold, italic, underline, strike, lists, quotes, code, links, text and
  * highlight colours, fonts, sizes, alignment). It produces HTML, which the server cleans again before storing.
  */
-export function NoteEditor({ value, onChange, onBlur, placeholder = 'Write your notes here…', label, minHeight = 160 }: Props) {
+export function NoteEditor({ value, onChange, onBlur, placeholder = 'Write your notes here…', label, minHeight = 160, readOnly = false }: Props) {
   const lastEmitted = useRef(value);
   const [palette, setPalette] = useState<'color' | 'highlight' | 'link' | null>(null);
   const [link, setLink] = useState('');
@@ -55,6 +57,7 @@ export function NoteEditor({ value, onChange, onBlur, placeholder = 'Write your 
       Placeholder.configure({ placeholder }),
     ],
     content: safeNoteHtml(value),
+    editable: !readOnly,
     editorProps: { attributes: { class: 'note-content', role: 'textbox', 'aria-multiline': 'true', 'aria-label': label } },
     onUpdate: ({ editor: ed }) => {
       const html = ed.isEmpty ? '' : ed.getHTML();
@@ -108,7 +111,7 @@ export function NoteEditor({ value, onChange, onBlur, placeholder = 'Write your 
 
   return (
     <div className="note">
-      <div className="note-toolbar" role="toolbar" aria-label={`${label} formatting`}>
+      <div className="note-toolbar" role="toolbar" aria-label={`${label} formatting`} style={readOnly ? { display: 'none' } : undefined}>
         <select className="tb-select" aria-label="Text style" value={state.heading} onChange={(e) => run((c) => (Number(e.target.value) ? c.setHeading({ level: Number(e.target.value) as 1 | 2 | 3 }) : c.setParagraph()))}>
           <option value={0}>Normal</option>
           <option value={1}>Heading 1</option>

@@ -202,6 +202,9 @@ describe('who can see and do what', () => {
     const download = await onBoard(viewer, owner).get(`/api/tasks/${task.id}/attachments/${att.id}`);
     expect(download.status).toBe(200);
     expect(download.headers['content-type']).toBe('image/png');
+    // <img> and <video> cannot send headers, so a GET may name the board in the URL instead
+    expect((await viewer.agent.get(`/api/tasks/${task.id}/attachments/${att.id}?workspace=${owner.user.id}`)).status).toBe(200);
+    expect((await viewer.agent.get(`/api/tasks/${task.id}/attachments/${att.id}`)).status).toBe(404);
   });
 });
 
