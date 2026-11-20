@@ -11,8 +11,8 @@ export async function list(req: Request, res: Response) {
 }
 
 export async function stats(req: Request, res: Response) {
-  const { today } = statsQuerySchema.parse(req.query);
-  const { value, status } = await tasks.getStats(req.userId!, today);
+  const { today, nowTime } = statsQuerySchema.parse(req.query);
+  const { value, status } = await tasks.getStats(req.userId!, today, nowTime);
   res.set(HEADER.X_CACHE, status).json(value);
 }
 

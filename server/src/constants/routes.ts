@@ -16,6 +16,7 @@ export const ROUTE = {
   },
   TASKS: { BASE: '/tasks', ROOT: '/', STATS: '/stats', BY_ID: '/:id', MOVE: '/:id/move' },
   COLUMNS: { BASE: '/columns', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
+  PRIORITIES: { BASE: '/priorities', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
 } as const;
 
 export const ROUTE_PARAM = { ID: 'id' } as const;

@@ -1,5 +1,5 @@
 import { Schema, model, type Types } from 'mongoose';
-import { COLUMN_LIMITS, MODEL } from '../../constants/index.js';
+import { COLUMN_LIMITS, MODEL, PATTERN } from '../../constants/index.js';
 
 export interface IColumn {
   owner: Types.ObjectId;
@@ -8,6 +8,8 @@ export interface IColumn {
   name: string;
   /** Tasks in a "done" column are finished: they get a completedAt and are never overdue. */
   isDone: boolean;
+  /** Hex colour chosen by the user, or null to use the default for that kind of column. */
+  color: string | null;
   /** Sparse number, same idea as a task's rank: lower is further left. */
   position: number;
   createdAt: Date;
@@ -20,6 +22,7 @@ const columnSchema = new Schema<IColumn>(
     key: { type: String, required: true },
     name: { type: String, required: true, trim: true, maxlength: COLUMN_LIMITS.NAME_MAX },
     isDone: { type: Boolean, default: false },
+    color: { type: String, default: null, match: PATTERN.HEX_COLOR },
     position: { type: Number, required: true },
   },
   { timestamps: true },

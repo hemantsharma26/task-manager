@@ -1,10 +1,11 @@
 import { env } from '../../config/env.js';
-import { DUE, ERROR_MESSAGE, RANK_STEP, DEFAULT_COLUMN_FALLBACK_KEY } from '../../constants/index.js';
+import { DEFAULT_COLUMN_FALLBACK_KEY, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, RANK_STEP, SORT, VALIDATION_MESSAGE } from '../../constants/index.js';
 import { cache, cacheKeys, type Cached } from '../../infra/cache/index.js';
 import { HttpError } from '../../shared/errors/http-error.js';
 import { todayUtc } from '../../shared/utils/dates.js';
 import { rankBetween } from '../../shared/utils/rank.js';
 import { columnsOf } from '../columns/columns.service.js';
+import { prioritiesOf } from '../priorities/priorities.service.js';
 import type { TaskStatus } from './task.model.js';
 import { buildFilter } from './tasks.filters.js';
 import { toTaskDTO } from './tasks.mapper.js';
@@ -26,7 +27,9 @@ export async function listTasks(userId: string, query: ListQuery): Promise<Cache
     // Only the "overdue" filter needs to know which columns count as finished.
     const doneKeys = query.due === DUE.OVERDUE ? doneKeysOf(await columnsOf(userId)) : [];
     const filter = buildFilter(userId, query, doneKeys);
-    const [items, total] = await Promise.all([taskRepository.findPage(filter, query), taskRepository.count(filter)]);
+    // Sorting by priority follows the user's own order of priorities, so that list is needed for it (and only for it).
+    const priorityOrder = query.sort === SORT.PRIORITY ? (await prioritiesOf(userId)).map((p) => p.key) : [];
+    const [items, total] = await Promise.all([taskRepository.findPage(filter, query, priorityOrder), taskRepository.count(filter)]);
     return buildPage(items.map(toTaskDTO), total, query);
   });
 }
@@ -35,11 +38,11 @@ function buildPage<T>(items: T[], total: number, query: Pick<ListQuery, 'page' |
   return { items, page: query.page, limit: query.limit, total, totalPages: Math.max(1, Math.ceil(total / query.limit)) };
 }
 
-export async function getStats(userId: string, today = todayUtc()) {
+export async function getStats(userId: string, today = todayUtc(), nowTime?: string) {
   const version = await cache.versionOf(userId);
-  return cache.remember(cacheKeys.taskStats(userId, version, { today }), env.CACHE_TTL_TASK_STATS_SECONDS, async () => {
+  return cache.remember(cacheKeys.taskStats(userId, version, { today, nowTime }), env.CACHE_TTL_TASK_STATS_SECONDS, async () => {
     const columns = await columnsOf(userId);
-    const [grouped, overdue] = await Promise.all([taskRepository.groupByStatus(userId), taskRepository.countOverdue(userId, doneKeysOf(columns), today)]);
+    const [grouped, overdue] = await Promise.all([taskRepository.groupByStatus(userId), taskRepository.countOverdue(userId, doneKeysOf(columns), today, nowTime)]);
     // Every current column gets a number (0 if empty), keyed by the column key.
     const byStatus = Object.fromEntries(columns.map((c) => [c.key, grouped.find((g) => g._id === c.key)?.n ?? 0]));
     const total = Object.values(byStatus).reduce((x, y) => x + y, 0);
@@ -66,6 +69,17 @@ async function requireColumn(userId: string, key: TaskStatus) {
   return column;
 }
 
+/** The priority a new task gets when none is given: Medium if it still exists, otherwise the middle one. */
+async function defaultPriority(userId: string) {
+  const priorities = await prioritiesOf(userId);
+  return (priorities.find((p) => p.key === DEFAULT_PRIORITY_KEY) ?? priorities[Math.floor(priorities.length / 2)])!.key;
+}
+
+async function requirePriority(userId: string, key: string) {
+  if (!(await prioritiesOf(userId)).some((p) => p.key === key)) throw HttpError.badRequest(ERROR_MESSAGE.UNKNOWN_PRIORITY(key));
+  return key;
+}
+
 const endRank = async (userId: string, status: TaskStatus) => (await taskRepository.lastRank(userId, status)) + RANK_STEP;
 
 export async function createTask(userId: string, input: CreateTaskInput) {
@@ -73,8 +87,9 @@ export async function createTask(userId: string, input: CreateTaskInput) {
   const column = input.status ? columns.find((c) => c.key === input.status) : columns[0];
   if (!column) throw HttpError.badRequest(ERROR_MESSAGE.UNKNOWN_COLUMN(input.status ?? DEFAULT_COLUMN_FALLBACK_KEY));
 
+  const priority = input.priority ? await requirePriority(userId, input.priority) : await defaultPriority(userId);
   const [number, rank] = await Promise.all([taskRepository.nextIssueNumber(userId), endRank(userId, column.key)]);
-  const task = await taskRepository.create({ ...input, status: column.key, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
+  const task = await taskRepository.create({ ...input, status: column.key, priority, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
   await cache.invalidateUser(userId);
   return toTaskDTO(task);
 }
@@ -87,7 +102,14 @@ export async function updateTask(userId: string, id: string, input: UpdateTaskIn
     task.rank = await endRank(userId, column.key);
     task.completedAt = column.isDone ? new Date() : null;
   }
-  task.set(input);
+  if (input.priority) await requirePriority(userId, input.priority);
+
+  // A time only means something on a date: clearing the date clears the time, and a time without a date is refused.
+  const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
+  const dueTime = dueDate === null ? null : input.dueTime === undefined ? task.dueTime : input.dueTime;
+  if (input.dueTime && dueDate === null) throw HttpError.badRequest(VALIDATION_MESSAGE.TIME_NEEDS_DATE);
+
+  task.set({ ...input, dueDate, dueTime });
   await task.save();
   await cache.invalidateUser(userId);
   return toTaskDTO(task);

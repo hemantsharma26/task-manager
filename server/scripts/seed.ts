@@ -37,12 +37,12 @@ const user = await User.create({
   passwordHash: await hashPassword(DEMO.password),
 });
 
-type SeedTask = Pick<CreateTaskInput, 'title' | 'priority' | 'status' | 'dueDate'> & { description?: string };
+type SeedTask = Pick<CreateTaskInput, 'title' | 'priority' | 'status' | 'dueDate'> & { description?: string; dueTime?: string | null };
 
 const tasks: SeedTask[] = [
-  { title: 'Fix login redirect bug', description: 'Users land on a blank page after the OAuth callback on Safari.', priority: 'high', status: 'in_progress', dueDate: isoOffset(1) },
+  { title: 'Fix login redirect bug', description: 'Users land on a blank page after the OAuth callback on Safari.', priority: 'high', status: 'in_progress', dueDate: isoOffset(1), dueTime: '17:30' },
   { title: 'Submit quarterly expense report', description: 'Attach the cab and hotel receipts from the Pune trip.', priority: 'high', status: 'todo', dueDate: isoOffset(-2) },
-  { title: 'Review pull request #142', priority: 'medium', status: 'todo', dueDate: isoOffset(0) },
+  { title: 'Review pull request #142', priority: 'medium', status: 'todo', dueDate: isoOffset(0), dueTime: '23:30' },
   { title: 'Write API docs for the orders endpoints', description: 'Cover pagination, filters and error shapes.', priority: 'medium', status: 'todo', dueDate: isoOffset(5) },
   { title: 'Renew domain and SSL certificate', priority: 'high', status: 'todo', dueDate: isoOffset(12) },
   { title: 'Clean up unused feature flags', priority: 'low', status: 'todo', dueDate: null },
@@ -50,7 +50,7 @@ const tasks: SeedTask[] = [
   { title: 'Set up CI cache for node_modules', description: 'Build time is 6 min, should drop below 3.', priority: 'medium', status: 'done', dueDate: isoOffset(-4) },
   { title: 'Upgrade MongoDB driver', priority: 'medium', status: 'done', dueDate: isoOffset(-7) },
   { title: 'Plan sprint retrospective', priority: 'low', status: 'in_progress', dueDate: isoOffset(3) },
-  { title: 'Payment webhook fails on retry', description: 'Duplicate events create two invoices when the gateway retries.', priority: 'high', status: 'issue', dueDate: isoOffset(0) },
+  { title: 'Payment webhook fails on retry', description: 'Duplicate events create two invoices when the gateway retries.', priority: 'high', status: 'issue', dueDate: isoOffset(0), dueTime: '09:00' },
   { title: 'Staging build is red after the Node upgrade', priority: 'medium', status: 'issue', dueDate: isoOffset(2) },
   { title: 'Rewrite onboarding emails after review', description: 'Legal asked for shorter copy and an unsubscribe link.', priority: 'medium', status: 'rework', dueDate: isoOffset(4) },
   { title: 'Reply to vendor about invoice mismatch', priority: 'high', status: 'todo', dueDate: isoOffset(-1) },
@@ -58,7 +58,7 @@ const tasks: SeedTask[] = [
 ];
 
 // Go through the same service the API uses, so numbers, ranks and completedAt are set exactly as in real use.
-for (const t of tasks) await createTask(String(user._id), { description: '', ...t });
+for (const t of tasks) await createTask(String(user._id), { description: '', dueTime: null, ...t });
 
 console.log(`Seeded ${tasks.length} tasks for ${DEMO.email} (password: ${DEMO.password})`);
 await Promise.all([disconnectDb(), cache.close()]);

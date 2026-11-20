@@ -70,6 +70,7 @@ const schema = z.object({
   CACHE_TTL_TASK_LIST_SECONDS: positiveInt(CACHE_TTL_SECONDS.TASK_LIST),
   CACHE_TTL_TASK_STATS_SECONDS: positiveInt(CACHE_TTL_SECONDS.TASK_STATS),
   CACHE_TTL_COLUMNS_SECONDS: positiveInt(CACHE_TTL_SECONDS.COLUMNS),
+  CACHE_TTL_PRIORITIES_SECONDS: positiveInt(CACHE_TTL_SECONDS.PRIORITIES),
 
   // --- rate limiting
   // Off only in the automated tests, which sign in hundreds of times from one address.

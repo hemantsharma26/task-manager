@@ -1,9 +1,3 @@
-export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
-export type TaskPriority = (typeof TASK_PRIORITIES)[number];
-export const PRIORITY = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' } as const satisfies Record<string, TaskPriority>;
-/** Used to sort priority low < medium < high. */
-export const PRIORITY_WEIGHT = { [PRIORITY.HIGH]: 3, [PRIORITY.MEDIUM]: 2, [PRIORITY.LOW]: 1 } as const;
-
 export const DUE_FILTERS = ['overdue', 'today', 'week', 'none'] as const;
 export type DueFilter = (typeof DUE_FILTERS)[number];
 export const DUE = { OVERDUE: 'overdue', TODAY: 'today', WEEK: 'week', NONE: 'none' } as const satisfies Record<string, DueFilter>;
@@ -20,13 +14,12 @@ export const ORDER = { ASC: 'asc', DESC: 'desc' } as const;
 export const ISSUE_KEY_PREFIX = 'TM';
 export const issueKey = (number: number) => `${ISSUE_KEY_PREFIX}-${number}`;
 
-export const TASK_LIMITS = { TITLE_MAX: 120, DESCRIPTION_MAX: 2000, COLUMN_KEY_MAX: 40, SEARCH_MAX: 100 } as const;
+export const TASK_LIMITS = { TITLE_MAX: 120, DESCRIPTION_MAX: 2000, COLUMN_KEY_MAX: 40, PRIORITY_KEY_MAX: 40, SEARCH_MAX: 100 } as const;
 export const PAGINATION = { DEFAULT_LIMIT: 10, MAX_LIMIT: 50, FIRST_PAGE: 1 } as const;
 
 // Helper fields the list aggregation adds to sort by, and then removes again.
 export const COMPUTED_FIELD = { PRIORITY_WEIGHT: '_priorityRank', NO_DUE_DATE: '_noDueDate', TITLE_LOWER: '_titleLower' } as const;
 
-export const DEFAULT_PRIORITY: TaskPriority = PRIORITY.MEDIUM;
 export const DEFAULT_COLUMN_FALLBACK_KEY = 'todo';
 export const TASK_FIELD = { STATUS: 'status', OWNER: 'owner', RANK: 'rank' } as const;
 

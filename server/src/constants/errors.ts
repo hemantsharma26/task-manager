@@ -48,6 +48,14 @@ export const ERROR_MESSAGE = {
   COLUMN_HAS_TASKS: (count: number) => `This column has ${count} ${count === 1 ? 'task' : 'tasks'}. Choose a column to move them to.`,
   COLUMN_BAD_TARGET: 'Pick a different, existing column to move the tasks to',
 
+  PRIORITY_NOT_FOUND: 'Priority not found',
+  UNKNOWN_PRIORITY: (key: string) => `There is no priority "${key}"`,
+  PRIORITY_LIMIT: (max: number) => `You can have at most ${max} priorities`,
+  PRIORITY_NAME_TAKEN: (name: string) => `There is already a priority called "${name}"`,
+  PRIORITY_LAST: 'You need at least one priority',
+  PRIORITY_HAS_TASKS: (count: number) => `${count} ${count === 1 ? 'task uses' : 'tasks use'} this priority. Choose another priority to move them to.`,
+  PRIORITY_BAD_TARGET: 'Pick a different, existing priority to move the tasks to',
+  PRIORITY_PLACEMENT_FAILED: 'Could not place the priority, please try again',
   TOO_MANY_AUTH_ATTEMPTS: 'Too many attempts, try again in a few minutes',
   TOO_MANY_REQUESTS: 'Too many requests, slow down a little',
 } as const;

@@ -11,6 +11,7 @@ import { CACHE_CONTROL, CLIENT_BUILD, CONTENT_TYPE_JSON, HEADER, HEALTH_STATUS, 
 import { logger } from './infra/logger.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { columnRouter } from './modules/columns/columns.routes.js';
+import { priorityRouter } from './modules/priorities/priorities.routes.js';
 import { taskRouter } from './modules/tasks/tasks.routes.js';
 import { apiCacheHeaders } from './shared/middleware/cache-headers.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/error-handler.js';
@@ -70,6 +71,7 @@ export function createApp() {
   app.use(`${ROUTE.API}${ROUTE.AUTH.BASE}`, authRouter);
   app.use(`${ROUTE.API}${ROUTE.TASKS.BASE}`, taskRouter);
   app.use(`${ROUTE.API}${ROUTE.COLUMNS.BASE}`, columnRouter);
+  app.use(`${ROUTE.API}${ROUTE.PRIORITIES.BASE}`, priorityRouter);
   app.use(ROUTE.API, notFoundHandler);
 
   // In production the API also serves the built React app, so the whole product is a

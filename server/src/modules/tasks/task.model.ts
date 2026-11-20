@@ -1,5 +1,5 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
-import { DEFAULT_PRIORITY, MODEL, TASK_LIMITS, TASK_PRIORITIES, PATTERN, type TaskPriority } from '../../constants/index.js';
+import { MODEL, TASK_LIMITS, PATTERN } from '../../constants/index.js';
 
 /** The key of one of the user's board columns (see the columns module). */
 export type TaskStatus = string;
@@ -13,9 +13,12 @@ export interface ITask {
   title: string;
   description: string;
   status: TaskStatus;
-  priority: TaskPriority;
+  /** The key of one of the user's priorities (see the priorities module). */
+  priority: string;
   /** Calendar date as YYYY-MM-DD. Deliberately not a Date: it must mean the same day in every timezone. */
   dueDate: string | null;
+  /** Wall-clock time on the due date, HH:MM (24 hour). Like the date it means the same hour for everybody. Only set together with a dueDate. */
+  dueTime: string | null;
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -29,8 +32,9 @@ const taskSchema = new Schema<ITask>(
     title: { type: String, required: true, trim: true, maxlength: TASK_LIMITS.TITLE_MAX },
     description: { type: String, trim: true, maxlength: TASK_LIMITS.DESCRIPTION_MAX, default: '' },
     status: { type: String, required: true },
-    priority: { type: String, enum: TASK_PRIORITIES, default: DEFAULT_PRIORITY },
+    priority: { type: String, required: true, maxlength: TASK_LIMITS.PRIORITY_KEY_MAX },
     dueDate: { type: String, default: null, match: PATTERN.ISO_DATE },
+    dueTime: { type: String, default: null, match: PATTERN.TIME_24H },
     completedAt: { type: Date, default: null },
   },
   { timestamps: true },
