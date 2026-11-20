@@ -1,5 +1,5 @@
 import { QueryClient, type InfiniteData } from '@tanstack/react-query';
-import { findTaskInCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot } from './cache';
+import { appendToColumnCaches, findTaskInCaches, isTempId, moveTaskBetweenColumnCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot } from './cache';
 import type { Task, TaskPage } from './types';
 
 const task = (n: number, over: Partial<Task> = {}): Task => ({
@@ -74,5 +74,52 @@ describe('task cache helpers', () => {
     qc.setQueryData(['stats', 'today'], { total: 3 });
     patchTaskInCaches(qc, 'id1', { title: 'x' });
     expect(qc.getQueryData(['stats', 'today'])).toEqual({ total: 3 });
+  });
+});
+
+describe('optimistic column helpers', () => {
+  const columnKey = (status: string, filters: object = {}) => ['tasks', 'column', status, filters, 'today'];
+  const columnOf = (qc: QueryClient, status: string, filters: object = {}) =>
+    qc.getQueryData<InfiniteData<TaskPage>>(columnKey(status, filters))!;
+
+  const withColumns = () => {
+    const qc = new QueryClient();
+    qc.setQueryData(columnKey('todo'), { pages: [page([task(1), task(2)], 2)], pageParams: [1] });
+    qc.setQueryData(columnKey('done'), { pages: [page([task(9, { status: 'done' })], 1)], pageParams: [1] });
+    return qc;
+  };
+
+  it('moves a card to the bottom of another column and fixes both counts', () => {
+    const qc = withColumns();
+    moveTaskBetweenColumnCaches(qc, task(1), 'done');
+
+    expect(columnOf(qc, 'todo').pages[0]!.items.map((t) => t.id)).toEqual(['id2']);
+    expect(columnOf(qc, 'todo').pages[0]!.total).toBe(1);
+    expect(columnOf(qc, 'done').pages[0]!.items.map((t) => [t.id, t.status])).toEqual([['id9', 'done'], ['id1', 'done']]);
+    expect(columnOf(qc, 'done').pages[0]!.total).toBe(2);
+  });
+
+  it('only changes the count when the target column has more pages not loaded yet', () => {
+    const qc = withColumns();
+    qc.setQueryData(columnKey('done'), { pages: [{ ...page([task(9, { status: 'done' })], 40), totalPages: 2 }], pageParams: [1] });
+    moveTaskBetweenColumnCaches(qc, task(1), 'done');
+    expect(columnOf(qc, 'done').pages[0]!.items).toHaveLength(1);
+    expect(columnOf(qc, 'done').pages[0]!.total).toBe(41);
+  });
+
+  it('appends a pending card to the right column, marked as temporary', () => {
+    const qc = withColumns();
+    appendToColumnCaches(qc, 'todo', task(0, { id: 'temp-1', key: 'TM-…' }));
+    expect(columnOf(qc, 'todo').pages[0]!.items.map((t) => t.id)).toEqual(['id1', 'id2', 'temp-1']);
+    expect(columnOf(qc, 'done').pages[0]!.items).toHaveLength(1);
+    expect(isTempId('temp-1')).toBe(true);
+    expect(isTempId('6b005e75d5c09c1fe734f406')).toBe(false);
+  });
+
+  it('skips filtered columns, because the new card might not match the filter', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(columnKey('todo', { q: 'rent' }), { pages: [page([task(1)], 1)], pageParams: [1] });
+    appendToColumnCaches(qc, 'todo', task(0, { id: 'temp-1' }));
+    expect(columnOf(qc, 'todo', { q: 'rent' }).pages[0]!.items).toHaveLength(1);
   });
 });

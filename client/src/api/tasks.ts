@@ -1,6 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { todayLocal } from '../lib/dates';
-import { findTaskInCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot, TASKS_KEY } from './cache';
+import { appendToColumnCaches, findTaskInCaches, moveTaskBetweenColumnCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot, TASKS_KEY } from './cache';
 import { http } from './http';
 import type { CommonFilters, ListFilters, Task, TaskInput, TaskPage, TaskStats, TaskStatus } from './types';
 
@@ -34,6 +34,9 @@ export function useColumn(status: TaskStatus, filters: CommonFilters) {
         { signal },
       ),
     getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    // Typing in search or changing a filter keeps the old cards on screen (dimmed) until the new ones arrive,
+    // instead of flashing skeletons.
+    placeholderData: keepPreviousData,
     select: (data: InfiniteData<TaskPage>) => ({
       total: data.pages[0]?.total ?? 0,
       // Pages are offsets, so a card moved while paging can show up twice. Keep the first copy.
@@ -96,10 +99,34 @@ function useRefresh() {
 }
 
 export function useCreateTask() {
+  const qc = useQueryClient();
   const refresh = useRefresh();
   return useMutation({
     mutationFn: (input: Partial<TaskInput> & { title: string }) => http<{ task: Task }>('/tasks', { method: 'POST', body: input }),
-    onSuccess: (_res, input) => refresh.columns([input.status ?? 'todo'], true),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: TASKS_KEY });
+      const snapshot = takeSnapshot(qc);
+      const status = input.status ?? 'todo';
+      const now = new Date().toISOString();
+      // The card shows up at once, greyed out, with a placeholder key. The server's answer (real key, real position)
+      // replaces it a moment later.
+      appendToColumnCaches(qc, status, {
+        id: `temp-${Date.now()}`,
+        number: 0,
+        key: 'TM-…',
+        title: input.title,
+        description: input.description ?? '',
+        status,
+        priority: input.priority ?? 'medium',
+        dueDate: input.dueDate ?? null,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return { snapshot };
+    },
+    onError: (_e, _v, ctx) => restoreSnapshot(qc, ctx?.snapshot),
+    onSettled: (_res, _err, input) => refresh.columns([input.status ?? 'todo'], true),
   });
 }
 
@@ -113,6 +140,9 @@ export function useUpdateTask() {
     onMutate: async ({ id, changes }) => {
       await qc.cancelQueries({ queryKey: TASKS_KEY });
       const snapshot = takeSnapshot(qc);
+      const before = findTaskInCaches(qc, id);
+      // A status change moves the card to the other column straight away, instead of leaving it behind until the refetch.
+      if (before && changes.status && changes.status !== before.status) moveTaskBetweenColumnCaches(qc, before, changes.status);
       patchTaskInCaches(qc, id, changes);
       return { snapshot };
     },

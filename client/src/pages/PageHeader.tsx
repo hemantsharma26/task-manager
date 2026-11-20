@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { prefetchListPage } from './lazy';
 
 export function PageHeader({ title }: { title: string }) {
   const { search } = useLocation();
@@ -10,7 +11,7 @@ export function PageHeader({ title }: { title: string }) {
         <NavLink to={{ pathname: '/board', search }} className="tab">
           Board
         </NavLink>
-        <NavLink to={{ pathname: '/list', search }} className="tab">
+        <NavLink to={{ pathname: '/list', search }} className="tab" onMouseEnter={prefetchListPage} onFocus={prefetchListPage}>
           List
         </NavLink>
       </nav>

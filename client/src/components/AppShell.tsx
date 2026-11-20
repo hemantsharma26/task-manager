@@ -8,6 +8,7 @@ import { CreateDialog } from './CreateDialog';
 import { BoardIcon, FlagIcon, ListIcon, PlusIcon } from './Icons';
 import { IssueDialog } from './IssueDialog';
 import { useToast } from './Toast';
+import { prefetchListPage } from '../pages/lazy';
 
 export interface ShellContext {
   openIssue: (id: string) => void;
@@ -80,7 +81,7 @@ export function AppShell() {
             <NavLink to={{ pathname: '/board', search }} className="side-link">
               <BoardIcon /> Board
             </NavLink>
-            <NavLink to={{ pathname: '/list', search }} className="side-link">
+            <NavLink to={{ pathname: '/list', search }} className="side-link" onMouseEnter={prefetchListPage} onFocus={prefetchListPage}>
               <ListIcon /> List
             </NavLink>
           </nav>

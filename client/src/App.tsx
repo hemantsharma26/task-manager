@@ -4,9 +4,10 @@ import { useAuth } from './api/auth';
 import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { BoardPage } from './pages/BoardPage';
+import { loadListPage } from './pages/lazy';
 
 // The list view is the less-used screen, so it is split out of the first download.
-const ListPage = lazy(() => import('./pages/ListPage').then((m) => ({ default: m.ListPage })));
+const ListPage = lazy(loadListPage);
 
 function RequireAuth() {
   const { user, loading } = useAuth();

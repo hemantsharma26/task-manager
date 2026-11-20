@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   closestCorners,
   DndContext,
+  defaultDropAnimationSideEffects,
   DragOverlay,
   KeyboardSensor,
   MouseSensor,
@@ -157,7 +158,8 @@ export function Board({ filters, owner, onOpen }: Props) {
               loading={q.isPending}
               error={q.isError && !q.data ? q.error.message : undefined}
               onRetry={() => void q.refetch()}
-              hasMore={!!q.hasNextPage && !draft}
+              stale={q.isPlaceholderData}
+              hasMore={!!q.hasNextPage}
               loadingMore={q.isFetchingNextPage}
               today={today}
               owner={owner}
@@ -168,7 +170,8 @@ export function Board({ filters, owner, onOpen }: Props) {
         })}
       </div>
 
-      <DragOverlay>
+      {/* The floating card glides into its slot when dropped instead of snapping. */}
+      <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
         {activeTask && (
           <div className="card card-overlay">
             <CardBody task={activeTask} today={today} owner={owner} />

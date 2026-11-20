@@ -17,6 +17,10 @@ const when = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', 
 export function IssueDialog({ id, owner, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const open = !!id;
+  // Keep showing the last issue while the dialog fades out, so its content does not vanish mid-animation.
+  const lastId = useRef(id);
+  if (id) lastId.current = id;
+  const shown = id ?? lastId.current;
 
   useEffect(() => {
     const el = ref.current;
@@ -28,7 +32,7 @@ export function IssueDialog({ id, owner, onClose }: Props) {
   return (
     <dialog ref={ref} className="dialog dialog-lg" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
       {/* key: switching to another issue starts with fresh local edit state */}
-      {id && <IssueBody key={id} id={id} owner={owner} onClose={onClose} />}
+      {shown && <IssueBody key={shown} id={shown} owner={owner} onClose={onClose} />}
     </dialog>
   );
 }

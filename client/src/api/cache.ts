@@ -62,3 +62,58 @@ export const takeSnapshot = (qc: QueryClient): Snapshot => qc.getQueriesData({ q
 export function restoreSnapshot(qc: QueryClient, snapshot: Snapshot | undefined) {
   snapshot?.forEach(([key, data]) => qc.setQueryData(key, data));
 }
+
+const isColumnKey = (key: readonly unknown[], status?: string) => key[0] === 'tasks' && key[1] === 'column' && (status === undefined || key[2] === status);
+
+/**
+ * Optimistically moves a task to another column: out of the old column's cache, onto the bottom of the new one.
+ * The server decides the real position, and a refetch right after fixes anything this guessed wrong, but for the
+ * moment in between the card is already where the user expects it, so nothing jumps.
+ */
+export function moveTaskBetweenColumnCaches(qc: QueryClient, task: Task, to: Task['status']) {
+  const moved: Task = { ...task, status: to };
+
+  for (const [key, data] of qc.getQueriesData<InfiniteData<TaskPage>>({ predicate: (q) => isColumnKey(q.queryKey) })) {
+    if (!data || !isInfinite(data)) continue;
+    const status = key[2];
+    if (status === task.status && task.status !== to) {
+      qc.setQueryData(key, {
+        ...data,
+        pages: data.pages.map((p) => {
+          const items = p.items.filter((t) => t.id !== task.id);
+          return { ...p, items, total: Math.max(0, p.total - (p.items.length - items.length)) };
+        }),
+      });
+    } else if (status === to && task.status !== to) {
+      const last = data.pages.length - 1;
+      const hasMore = (data.pages[last]?.page ?? 1) < (data.pages[last]?.totalPages ?? 1);
+      qc.setQueryData(key, {
+        ...data,
+        pages: data.pages.map((p, i) => ({
+          ...p,
+          total: p.total + 1,
+          // If more pages are still on the server, the bottom of the column is not loaded yet, so only the count moves.
+          items: i === last && !hasMore ? [...p.items, moved] : p.items,
+        })),
+      });
+    }
+  }
+}
+
+/** Adds a not-yet-saved card to the bottom of one column's cache. Used for instant "Create". */
+export function appendToColumnCaches(qc: QueryClient, status: Task['status'], temp: Task) {
+  for (const [key, data] of qc.getQueriesData<InfiniteData<TaskPage>>({ predicate: (q) => isColumnKey(q.queryKey, status) })) {
+    if (!data || !isInfinite(data)) continue;
+    // A column that is filtered might not be allowed to show the new card, so leave those to the refetch.
+    const f = key[3] as { q?: string; priority?: string; due?: string } | undefined;
+    if (f?.q || f?.priority || f?.due) continue;
+    const last = data.pages.length - 1;
+    const hasMore = (data.pages[last]?.page ?? 1) < (data.pages[last]?.totalPages ?? 1);
+    qc.setQueryData(key, {
+      ...data,
+      pages: data.pages.map((p, i) => ({ ...p, total: p.total + 1, items: i === last && !hasMore ? [...p.items, temp] : p.items })),
+    });
+  }
+}
+
+export const isTempId = (id: string) => id.startsWith('temp-');
