@@ -24,6 +24,7 @@ export const VALIDATION_MESSAGE = {
   TIME_NEEDS_DATE: 'Choose a due date before setting a time',
   PRIORITY_NAME_REQUIRED: 'Give the priority a name',
   PRIORITY_NAME_TOO_LONG: (max: number) => `Keep the name under ${max} characters`,
+  NOTE_TOO_LONG: (max: number) => `The note is too long (max ${max} characters of text)`,
   ENV_REQUIRED_MONGODB_URI: 'MONGODB_URI is required',
   ENV_PEPPER_LENGTH: (min: number) => `PASSWORD_PEPPER must be at least ${min} characters`,
   ENV_JWT_SECRET_LENGTH: (min: number) => `JWT_SECRET must be at least ${min} characters`,

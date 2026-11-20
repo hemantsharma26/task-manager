@@ -1,7 +1,8 @@
 import { env } from '../../config/env.js';
-import { DEFAULT_COLUMN_FALLBACK_KEY, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, RANK_STEP, SORT, VALIDATION_MESSAGE } from '../../constants/index.js';
+import { DEFAULT_COLUMN_FALLBACK_KEY, DEFAULT_PRIORITY_KEY, DUE, ERROR_MESSAGE, RANK_STEP, RICH_TEXT_LIMITS, SORT, VALIDATION_MESSAGE } from '../../constants/index.js';
 import { cache, cacheKeys, type Cached } from '../../infra/cache/index.js';
 import { HttpError } from '../../shared/errors/http-error.js';
+import { cleanNote } from '../../shared/utils/html.js';
 import { todayUtc } from '../../shared/utils/dates.js';
 import { rankBetween } from '../../shared/utils/rank.js';
 import { columnsOf } from '../columns/columns.service.js';
@@ -80,6 +81,13 @@ async function requirePriority(userId: string, key: string) {
   return key;
 }
 
+/** Cleans a note and checks how much visible text it holds. */
+function note(raw: string) {
+  const { html, text } = cleanNote(raw);
+  if (text.length > RICH_TEXT_LIMITS.TEXT_MAX) throw HttpError.badRequest(VALIDATION_MESSAGE.NOTE_TOO_LONG(RICH_TEXT_LIMITS.TEXT_MAX));
+  return { description: html, descriptionText: text };
+}
+
 const endRank = async (userId: string, status: TaskStatus) => (await taskRepository.lastRank(userId, status)) + RANK_STEP;
 
 export async function createTask(userId: string, input: CreateTaskInput) {
@@ -89,7 +97,7 @@ export async function createTask(userId: string, input: CreateTaskInput) {
 
   const priority = input.priority ? await requirePriority(userId, input.priority) : await defaultPriority(userId);
   const [number, rank] = await Promise.all([taskRepository.nextIssueNumber(userId), endRank(userId, column.key)]);
-  const task = await taskRepository.create({ ...input, status: column.key, priority, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
+  const task = await taskRepository.create({ ...input, ...note(input.description), status: column.key, priority, owner: userId, number, rank, completedAt: column.isDone ? new Date() : null });
   await cache.invalidateUser(userId);
   return toTaskDTO(task);
 }
@@ -109,7 +117,7 @@ export async function updateTask(userId: string, id: string, input: UpdateTaskIn
   const dueTime = dueDate === null ? null : input.dueTime === undefined ? task.dueTime : input.dueTime;
   if (input.dueTime && dueDate === null) throw HttpError.badRequest(VALIDATION_MESSAGE.TIME_NEEDS_DATE);
 
-  task.set({ ...input, dueDate, dueTime });
+  task.set({ ...input, ...(input.description !== undefined ? note(input.description) : {}), dueDate, dueTime });
   await task.save();
   await cache.invalidateUser(userId);
   return toTaskDTO(task);

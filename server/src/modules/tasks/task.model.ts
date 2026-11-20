@@ -1,5 +1,5 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
-import { MODEL, TASK_LIMITS, PATTERN } from '../../constants/index.js';
+import { MODEL, PATTERN, RICH_TEXT_LIMITS, TASK_LIMITS } from '../../constants/index.js';
 
 /** The key of one of the user's board columns (see the columns module). */
 export type TaskStatus = string;
@@ -11,7 +11,12 @@ export interface ITask {
   /** Position inside its status column (lower = higher up). Gaps let a drag reorder with one write. */
   rank: number;
   title: string;
+  /** The note: sanitised HTML (older tasks may still hold plain text; the API shows both as HTML). */
   description: string;
+  /** The note's visible text, for searching. */
+  descriptionText?: string;
+  /** Hex colour of the card, or null for the default look. */
+  color: string | null;
   status: TaskStatus;
   /** The key of one of the user's priorities (see the priorities module). */
   priority: string;
@@ -30,7 +35,10 @@ const taskSchema = new Schema<ITask>(
     number: { type: Number, required: true },
     rank: { type: Number, required: true },
     title: { type: String, required: true, trim: true, maxlength: TASK_LIMITS.TITLE_MAX },
-    description: { type: String, trim: true, maxlength: TASK_LIMITS.DESCRIPTION_MAX, default: '' },
+    description: { type: String, trim: true, maxlength: RICH_TEXT_LIMITS.HTML_MAX, default: '' },
+    // No default on purpose: its absence marks a task from before notes were rich text, whose description is plain text.
+    descriptionText: { type: String, maxlength: RICH_TEXT_LIMITS.TEXT_MAX },
+    color: { type: String, default: null, match: PATTERN.HEX_COLOR },
     status: { type: String, required: true },
     priority: { type: String, required: true, maxlength: TASK_LIMITS.PRIORITY_KEY_MAX },
     dueDate: { type: String, default: null, match: PATTERN.ISO_DATE },

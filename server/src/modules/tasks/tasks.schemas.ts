@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DUE_FILTERS, PAGINATION, PATTERN, SORT, SORT_FIELDS, SORT_ORDERS, ORDER, TASK_LIMITS, VALIDATION_MESSAGE } from '../../constants/index.js';
+import { DUE_FILTERS, ORDER, PAGINATION, PATTERN, RICH_TEXT_LIMITS, SORT, SORT_FIELDS, SORT_ORDERS, TASK_LIMITS, VALIDATION_MESSAGE } from '../../constants/index.js';
 import { isRealIsoDate } from '../../shared/utils/dates.js';
 
 /** YYYY-MM-DD that is also a real calendar date (rejects 2026-02-31). */
@@ -16,7 +16,9 @@ const columnKey = z.string().trim().min(1).max(TASK_LIMITS.COLUMN_KEY_MAX);
 const objectId = z.string().regex(PATTERN.OBJECT_ID, VALIDATION_MESSAGE.INVALID_ID);
 
 const title = z.string().trim().min(1, VALIDATION_MESSAGE.TITLE_REQUIRED).max(TASK_LIMITS.TITLE_MAX, VALIDATION_MESSAGE.TITLE_TOO_LONG(TASK_LIMITS.TITLE_MAX));
-const description = z.string().trim().max(TASK_LIMITS.DESCRIPTION_MAX, VALIDATION_MESSAGE.DESCRIPTION_TOO_LONG(TASK_LIMITS.DESCRIPTION_MAX));
+// The note arrives as HTML (or plain text). Its visible length is checked after cleaning, in the service.
+const description = z.string().max(RICH_TEXT_LIMITS.HTML_MAX, VALIDATION_MESSAGE.DESCRIPTION_TOO_LONG(RICH_TEXT_LIMITS.HTML_MAX));
+const cardColor = z.string().regex(PATTERN.HEX_COLOR, VALIDATION_MESSAGE.COLOR).transform((c) => c.toLowerCase());
 
 export const createTaskSchema = z
   .object({
@@ -28,11 +30,12 @@ export const createTaskSchema = z
     priority: priorityKey.optional(),
     dueDate: isoDate.nullable().default(null),
     dueTime: timeOfDay.nullable().default(null),
+    color: cardColor.nullable().default(null),
   })
   .refine((v) => v.dueTime === null || v.dueDate !== null, { path: ['dueTime'], message: VALIDATION_MESSAGE.TIME_NEEDS_DATE });
 
 export const updateTaskSchema = z
-  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable() })
+  .object({ title, description, status: columnKey, priority: priorityKey, dueDate: isoDate.nullable(), dueTime: timeOfDay.nullable(), color: cardColor.nullable() })
   .partial()
   .refine((v) => Object.keys(v).length > 0, VALIDATION_MESSAGE.NOTHING_TO_UPDATE);
 

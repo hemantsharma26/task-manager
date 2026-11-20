@@ -14,3 +14,6 @@ export function slugify(name: string, fallback: string = COLUMN_KEY_FALLBACK): s
 }
 
 export const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+export const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

@@ -23,7 +23,8 @@ export function buildFilter(userId: string, q: Filterable, doneKeys: string[]) {
   if (q.priority) filter.priority = q.priority;
   if (q.q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
-    all.push({ $or: [{ title: rx }, { description: rx }] });
+    // The visible text of the note is searched, never its HTML markup. Tasks from before the note had a text field are matched on their plain description.
+    all.push({ $or: [{ title: rx }, { descriptionText: rx }, { descriptionText: { $exists: false }, description: rx }] });
   }
 
   // YYYY-MM-DD strings compare correctly as plain strings.
