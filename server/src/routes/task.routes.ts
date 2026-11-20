@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { createTaskSchema, listQuerySchema, statsQuerySchema, updateTaskSchema } from '../schemas/task.js';
+import { createTaskSchema, listQuerySchema, moveTaskSchema, statsQuerySchema, updateTaskSchema } from '../schemas/task.js';
 import * as tasks from '../services/task.service.js';
 
 export const taskRouter = Router();
@@ -30,6 +30,11 @@ taskRouter.get('/:id', async (req, res) => {
 taskRouter.patch('/:id', async (req, res) => {
   const input = updateTaskSchema.parse(req.body);
   res.json({ task: await tasks.updateTask(req.userId!, String(req.params.id), input) });
+});
+
+taskRouter.post('/:id/move', async (req, res) => {
+  const input = moveTaskSchema.parse(req.body);
+  res.json({ task: await tasks.moveTask(req.userId!, String(req.params.id), input) });
 });
 
 taskRouter.delete('/:id', async (req, res) => {

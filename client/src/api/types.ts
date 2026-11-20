@@ -24,6 +24,9 @@ export interface User {
 
 export interface Task {
   id: string;
+  /** Per-user issue number, shown as the key (TM-12). */
+  number: number;
+  key: string;
   title: string;
   description: string;
   status: TaskStatus;
@@ -36,13 +39,17 @@ export interface Task {
 }
 
 export type DueFilter = 'overdue' | 'today' | 'week' | 'none';
-export type SortField = 'createdAt' | 'dueDate' | 'priority' | 'title';
+export type SortField = 'createdAt' | 'dueDate' | 'priority' | 'title' | 'rank';
 
-export interface TaskFilters {
-  status?: TaskStatus;
+/** What both the board and the list share. The board has no status filter: its columns are the statuses. */
+export interface CommonFilters {
   priority?: TaskPriority;
   due?: DueFilter;
   q: string;
+}
+
+export interface ListFilters extends CommonFilters {
+  status?: TaskStatus;
   sort: SortField;
   order: 'asc' | 'desc';
   page: number;

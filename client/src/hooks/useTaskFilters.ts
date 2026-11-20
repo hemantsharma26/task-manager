@@ -1,22 +1,22 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PRIORITIES, STATUSES, type DueFilter, type SortField, type TaskFilters } from '../api/types';
+import { PRIORITIES, STATUSES, type DueFilter, type ListFilters, type SortField } from '../api/types';
 
 const DUE: readonly DueFilter[] = ['overdue', 'today', 'week', 'none'];
-const SORTS: readonly SortField[] = ['createdAt', 'dueDate', 'priority', 'title'];
+const SORTS: readonly SortField[] = ['createdAt', 'dueDate', 'priority', 'title', 'rank'];
+const FILTER_KEYS = ['status', 'priority', 'due', 'q', 'sort', 'order', 'page'];
 
-const pick = <T extends string>(allowed: readonly T[], value: string | null): T | undefined =>
-  allowed.find((a) => a === value);
+const pick = <T extends string>(allowed: readonly T[], value: string | null): T | undefined => allowed.find((a) => a === value);
 
 /**
- * Filters live in the URL, not in component state: a filtered view can be bookmarked or
- * shared, and the back button steps through filter changes. Anything unrecognised in the
- * URL falls back to a default instead of being sent to the API.
+ * Filters live in the URL, not in component state: a filtered view can be bookmarked or shared and the
+ * back button steps through filter changes. Anything unrecognised in the URL falls back to a default
+ * instead of being sent to the API.
  */
 export function useTaskFilters() {
   const [params, setParams] = useSearchParams();
 
-  const filters = useMemo<TaskFilters>(
+  const filters = useMemo<ListFilters>(
     () => ({
       status: pick(STATUSES, params.get('status')),
       priority: pick(PRIORITIES, params.get('priority')),
@@ -30,7 +30,7 @@ export function useTaskFilters() {
   );
 
   const update = useCallback(
-    (patch: Partial<TaskFilters>) => {
+    (patch: Partial<ListFilters>) => {
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -49,8 +49,33 @@ export function useTaskFilters() {
     [setParams],
   );
 
-  const reset = useCallback(() => setParams({}), [setParams]);
+  const reset = useCallback(
+    () =>
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        FILTER_KEYS.forEach((k) => next.delete(k));
+        return next;
+      }),
+    [setParams],
+  );
 
   const isFiltered = !!(filters.status || filters.priority || filters.due || filters.q);
   return { filters, update, reset, isFiltered };
+}
+
+/** The open issue is part of the URL too (?selected=<id>), so it can be linked to and survives a refresh. */
+export function useSelectedIssue() {
+  const [params, setParams] = useSearchParams();
+  const selected = params.get('selected');
+  const select = useCallback(
+    (id: string | null) =>
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set('selected', id);
+        else next.delete('selected');
+        return next;
+      }),
+    [setParams],
+  );
+  return { selected, select };
 }

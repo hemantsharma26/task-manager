@@ -1,12 +1,16 @@
 import { isValidObjectId, Types, type PipelineStage } from 'mongoose';
-import { Task, type ITask, type TaskDoc } from '../models/Task.js';
-import type { CreateTaskInput, ListQuery, UpdateTaskInput } from '../schemas/task.js';
+import { nextIssueNumber } from '../models/Counter.js';
+import { Task, type ITask, type TaskDoc, type TaskStatus } from '../models/Task.js';
+import type { CreateTaskInput, ListQuery, MoveTaskInput, UpdateTaskInput } from '../schemas/task.js';
 import { HttpError } from '../utils/httpError.js';
+import { RANK_STEP, rankBetween } from '../utils/rank.js';
 
 type TaskLike = Omit<ITask, 'owner'> & { _id: unknown; owner: unknown };
 
 export const toTaskDTO = (t: TaskLike) => ({
   id: String(t._id),
+  number: t.number,
+  key: `TM-${t.number}`,
   title: t.title,
   description: t.description,
   status: t.status,
@@ -70,19 +74,43 @@ const PRIORITY_RANK = {
 export async function listTasks(userId: string, query: ListQuery) {
   const filter = buildFilter(userId, query);
   const dir = query.order === 'asc' ? 1 : -1;
+  const skip = (query.page - 1) * query.limit;
 
-  // Aggregation rather than find() because some sorts need computed keys:
-  //  - priority is a string but must order low < medium < high
-  //  - dueDate must put tasks WITHOUT a date last, in both directions
-  //  - title must sort case-insensitively (without needing a collation on the whole query)
-  const sortKeys: Record<ListQuery['sort'], Record<string, 1 | -1>> = {
-    createdAt: { createdAt: dir },
+  const [items, total] = await Promise.all([
+    query.sort === 'createdAt' || query.sort === 'rank'
+      ? // Sorts that match an index go straight through find(): no computed fields, no in-memory sort.
+        Task.find(filter)
+          .sort({ [query.sort]: dir, _id: dir })
+          .skip(skip)
+          .limit(query.limit)
+          .lean<TaskLike[]>()
+      : Task.aggregate<TaskLike>(computedSortPipeline(filter, query.sort, dir, skip, query.limit)),
+    Task.countDocuments(filter),
+  ]);
+
+  return {
+    items: items.map(toTaskDTO),
+    page: query.page,
+    limit: query.limit,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / query.limit)),
+  };
+}
+
+/**
+ * Aggregation is only used for the sorts that need a computed key:
+ *  - priority is a string but must order low < medium < high
+ *  - dueDate must put tasks WITHOUT a date last, in both directions
+ *  - title must sort case-insensitively (without a collation on the whole query)
+ */
+function computedSortPipeline(filter: Record<string, unknown>, sort: 'dueDate' | 'priority' | 'title', dir: 1 | -1, skip: number, limit: number): PipelineStage[] {
+  const sortKeys = {
     dueDate: { _noDueDate: 1, dueDate: dir },
     priority: { _priorityRank: dir, createdAt: -1 },
     title: { _titleLower: dir },
-  };
+  } as const;
 
-  const pipeline: PipelineStage[] = [
+  return [
     { $match: filter },
     {
       $addFields: {
@@ -92,20 +120,12 @@ export async function listTasks(userId: string, query: ListQuery) {
       },
     },
     // _id as the last key keeps pagination stable when the other keys tie.
-    { $sort: { ...sortKeys[query.sort], _id: dir } },
-    { $skip: (query.page - 1) * query.limit },
-    { $limit: query.limit },
+    { $sort: { ...sortKeys[sort], _id: dir } },
+    { $skip: skip },
+    { $limit: limit },
+    // Drop the helper fields so they never leak into the response.
+    { $project: { _priorityRank: 0, _noDueDate: 0, _titleLower: 0 } },
   ];
-
-  const [items, total] = await Promise.all([Task.aggregate<TaskLike>(pipeline), Task.countDocuments(filter)]);
-
-  return {
-    items: items.map(toTaskDTO),
-    page: query.page,
-    limit: query.limit,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / query.limit)),
-  };
 }
 
 export async function getStats(userId: string, today = todayUtc()) {
@@ -132,14 +152,62 @@ export async function getTask(userId: string, id: string) {
   return toTaskDTO(await findOwned(userId, id));
 }
 
+/** Rank that puts a task at the bottom of a column. */
+async function endRank(ownerId: string, status: TaskStatus): Promise<number> {
+  const last = await Task.findOne({ owner: ownerId, status }).sort({ rank: -1 }).select('rank').lean();
+  return (last?.rank ?? 0) + RANK_STEP;
+}
+
 export async function createTask(userId: string, input: CreateTaskInput) {
-  const task = await Task.create({ ...input, owner: userId });
+  const [number, rank] = await Promise.all([nextIssueNumber(userId), endRank(userId, input.status)]);
+  const task = await Task.create({ ...input, owner: userId, number, rank });
   return toTaskDTO(task);
 }
 
 export async function updateTask(userId: string, id: string, input: UpdateTaskInput) {
   const task = await findOwned(userId, id);
+  // Changing status through the form (not a drag) lands the task at the bottom of its new column.
+  if (input.status && input.status !== task.status) task.rank = await endRank(userId, input.status);
   task.set(input);
+  await task.save();
+  return toTaskDTO(task);
+}
+
+/** Renumber one column 1000, 2000, ... keeping its current order. Only runs when ranks run out of room. */
+async function rebalanceColumn(ownerId: string, status: TaskStatus) {
+  const rows = await Task.find({ owner: ownerId, status }).sort({ rank: 1, _id: 1 }).select('_id').lean();
+  if (!rows.length) return;
+  await Task.bulkWrite(
+    rows.map((r, i) => ({ updateOne: { filter: { _id: r._id }, update: { $set: { rank: (i + 1) * RANK_STEP } } } })),
+  );
+}
+
+/**
+ * Drag and drop: put the task into `status`, directly below `afterId` (or at the top when absent).
+ * Both neighbours are looked up here, on the server, from the real data, so the result is right even if
+ * the client has only loaded the first page of a long column.
+ */
+export async function moveTask(userId: string, id: string, input: MoveTaskInput) {
+  const task = await findOwned(userId, id);
+  const { status } = input;
+  const afterId = input.afterId && input.afterId !== id ? input.afterId : null;
+
+  const compute = async (): Promise<number | null> => {
+    const prev = afterId ? await Task.findOne({ _id: afterId, owner: userId, status }).select('rank').lean() : null;
+    const nextQuery = { owner: userId, status, _id: { $ne: task._id }, ...(prev ? { rank: { $gt: prev.rank } } : {}) };
+    const next = await Task.findOne(nextQuery).sort({ rank: 1, _id: 1 }).select('rank').lean();
+    return rankBetween(prev?.rank, next?.rank);
+  };
+
+  let rank = await compute();
+  if (rank === null) {
+    await rebalanceColumn(userId, status);
+    rank = await compute();
+  }
+  if (rank === null) throw HttpError.conflict('Could not place the task, please try again');
+
+  task.status = status;
+  task.rank = rank;
   await task.save();
   return toTaskDTO(task);
 }

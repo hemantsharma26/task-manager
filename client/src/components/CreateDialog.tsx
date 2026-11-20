@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/http';
-import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, type Task, type TaskInput } from '../api/types';
+import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, type TaskInput } from '../api/types';
+import { CloseIcon } from './Icons';
 
 interface Props {
-  /** null = create a new task, a Task = edit it. `undefined` keeps the dialog closed. */
-  task: Task | null | undefined;
+  open: boolean;
   onClose: () => void;
   onSubmit: (input: TaskInput) => Promise<unknown>;
 }
@@ -22,25 +22,24 @@ function validate(v: TaskInput): Errors {
   return errors;
 }
 
-export function TaskFormDialog({ task, onClose, onSubmit }: Props) {
+export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
-  const open = task !== undefined;
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
-  // Native <dialog>: gives us focus trapping, Escape-to-close and the backdrop for free.
+  // Native <dialog>: focus trapping, Escape-to-close and the backdrop come for free.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) {
-      setValues(task ? { title: task.title, description: task.description, status: task.status, priority: task.priority, dueDate: task.dueDate } : EMPTY);
+      setValues(EMPTY);
       setErrors({});
       setSaving(false);
       el.showModal();
     }
     if (!open && el.open) el.close();
-  }, [open, task]);
+  }, [open]);
 
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -69,9 +68,14 @@ export function TaskFormDialog({ task, onClose, onSubmit }: Props) {
   }
 
   return (
-    <dialog ref={ref} className="dialog" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
+    <dialog ref={ref} className="dialog dialog-sm" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
       <form onSubmit={handleSubmit} noValidate className="dialog-body">
-        <h2>{task ? 'Edit task' : 'New task'}</h2>
+        <div className="dialog-head">
+          <h2>Create task</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </div>
 
         {errors.form && (
           <p className="form-error" role="alert">
@@ -80,7 +84,7 @@ export function TaskFormDialog({ task, onClose, onSubmit }: Props) {
         )}
 
         <label className="field">
-          <span>Title</span>
+          <span>Summary</span>
           <input
             value={values.title}
             onChange={(e) => set('title', e.target.value)}
@@ -101,7 +105,7 @@ export function TaskFormDialog({ task, onClose, onSubmit }: Props) {
           <span>
             Description <span className="muted">(optional)</span>
           </span>
-          <textarea rows={3} value={values.description} onChange={(e) => set('description', e.target.value)} aria-invalid={!!errors.description} />
+          <textarea rows={4} value={values.description} onChange={(e) => set('description', e.target.value)} aria-invalid={!!errors.description} />
           {errors.description && <small className="field-error">{errors.description}</small>}
         </label>
 
@@ -136,11 +140,11 @@ export function TaskFormDialog({ task, onClose, onSubmit }: Props) {
         </div>
 
         <div className="dialog-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-subtle" onClick={onClose}>
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : task ? 'Save changes' : 'Add task'}
+            {saving ? 'Creating…' : 'Create'}
           </button>
         </div>
       </form>

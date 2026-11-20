@@ -11,7 +11,10 @@ import './styles/app.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15_000,
+      // Data is fresh for 30s (no refetch when switching views or reopening a card), and unused
+      // results stay in memory for 10 minutes so coming back to a view is instant.
+      staleTime: 30_000,
+      gcTime: 10 * 60_000,
       refetchOnWindowFocus: true,
       // Retrying a 4xx never helps; only retry flaky network / 5xx once.
       retry: (count, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 1,

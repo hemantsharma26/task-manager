@@ -9,7 +9,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const signIn = useSignIn(mode);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
 
-  if (user) return <Navigate to={(location.state as { from?: string } | null)?.from ?? '/'} replace />;
+  if (user) return <Navigate to={(location.state as { from?: string } | null)?.from ?? '/board'} replace />;
 
   const isRegister = mode === 'register';
   const error = signIn.error instanceof ApiError ? signIn.error : null;

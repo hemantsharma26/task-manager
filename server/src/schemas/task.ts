@@ -33,7 +33,7 @@ export const updateTaskSchema = z
   .refine((v) => Object.keys(v).length > 0, 'Send at least one field to update');
 
 export const DUE_FILTERS = ['overdue', 'today', 'week', 'none'] as const;
-export const SORT_FIELDS = ['createdAt', 'dueDate', 'priority', 'title'] as const;
+export const SORT_FIELDS = ['createdAt', 'dueDate', 'priority', 'title', 'rank'] as const;
 
 export const listQuerySchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
@@ -48,8 +48,17 @@ export const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
+const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
+
+// Drop a card into `status`, directly below `afterId`. No afterId means the top of the column.
+export const moveTaskSchema = z.object({
+  status: z.enum(TASK_STATUSES),
+  afterId: objectId.nullish(),
+});
+
 export const statsQuerySchema = z.object({ today: isoDate.optional() });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type MoveTaskInput = z.infer<typeof moveTaskSchema>;
 export type ListQuery = z.infer<typeof listQuerySchema>;

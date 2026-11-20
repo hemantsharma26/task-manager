@@ -1,22 +1,26 @@
 # Task Manager
 
-A small task manager built with **React, Express and MongoDB** (TypeScript on both sides). You sign up, and
-then create, edit, complete, filter, sort and search your own tasks. Each user only ever sees their own data.
+A task manager built with **React, Express and MongoDB** (TypeScript on both sides), with a Kanban board in the
+style of Jira. You sign up, then create, edit, move, filter, sort and search your own tasks. Each user only ever sees
+their own data.
 
-I kept the scope deliberately tight and spent the effort on the parts that usually go wrong in small apps:
-validation, ownership checks, sensible error handling, dates and timezones, and tests.
+I kept the scope tight and spent the effort on the parts that usually go wrong in small apps: validation,
+ownership checks, ordering that survives drag and drop, dates and timezones, HTTP caching, and tests.
 
 ## Features
 
 - Register, sign in and sign out (JWT in an `httpOnly` cookie)
-- Create, edit, delete (with an inline confirmation) and complete tasks
-- Title, description, priority (low / medium / high), status (to do / in progress / done) and due date
-- Summary cards (all, to do, in progress, done, overdue) that double as quick filters
-- Search, filter by priority and due date (overdue, today, next 7 days, none), and five sort orders
-- Server-side pagination
-- Filters are kept in the URL, so a filtered view can be bookmarked and the back button works
-- Optimistic updates for ticking a task off or deleting it, with rollback if the request fails
-- Responsive layout, keyboard friendly, follows the system light / dark theme
+- **Board** with To do / In progress / Done columns and drag and drop: mouse, touch (press and hold), or keyboard (Space to pick up, arrow keys to move, Space to drop, Escape to cancel). Status can also be changed from the issue dialog
+- **List** view with sortable columns, status filter and pagination
+- Issue keys (`TM-12`), priority icons, status lozenges, due-date badges that turn red when overdue
+- Issue dialog opened from any card: edit the title and description in place, change status, priority and due date
+  (every change saves on its own). The open issue is in the URL, so it can be linked to
+- "+ Create" at the bottom of each column for fast entry, plus a full create dialog
+- Sidebar quick filters (all, overdue, due this week, high priority) with live counts, and search
+- Per-column "Show more" so a long column loads 20 cards at a time
+- Filters live in the URL, so a view can be bookmarked and the back button works
+- Optimistic updates (drag, edit, delete) with rollback if the request fails
+- Responsive, keyboard friendly, light theme
 
 ## Quick start
 
@@ -73,13 +77,15 @@ on a server IP), set `COOKIE_SECURE=false` in `server/.env`, otherwise browsers 
 ## Tests and checks
 
 ```bash
-npm test             # 24 API tests (real MongoDB in memory) + 13 UI/unit tests
+npm test             # 44 API tests (real MongoDB in memory) + 17 UI/unit tests
 npm run typecheck
 ```
 
 The API tests run against a real `mongod` (started in memory), not mocks, because most of the interesting logic
-(sorting, filters, unique indexes) lives in the queries. They cover auth, validation, ownership, filters,
-all sort orders, pagination, the date logic and the error shapes.
+(ordering, filters, unique indexes) lives in the queries. They cover auth, validation, ownership, filters, every
+sort order, pagination, drag-and-drop ordering (including the renumbering edge case), issue numbering under
+concurrent creates, ETag/304 caching, compression, and that the hot queries really use their indexes (checked
+with `explain`).
 
 ## API
 
@@ -94,13 +100,14 @@ All routes are under `/api`. Errors always have the same shape:
 | GET    | `/auth/me`          | Current user                                        |
 | GET    | `/tasks`            | List with filters, sort and pagination (see below)  |
 | GET    | `/tasks/stats`      | Counts per status plus the number of overdue tasks  |
-| POST   | `/tasks`            | Create                                              |
+| POST   | `/tasks`            | Create (gets the next issue number, goes to the bottom of its column) |
 | GET    | `/tasks/:id`        | Read one                                            |
 | PATCH  | `/tasks/:id`        | Update any subset of fields                         |
+| POST   | `/tasks/:id/move`   | Drag and drop: `{ status, afterId }` puts the task in a column, directly below `afterId` (top if absent) |
 | DELETE | `/tasks/:id`        | Delete                                              |
 
 `GET /tasks` query parameters: `status`, `priority`, `due` (`overdue|today|week|none`), `q` (search),
-`sort` (`createdAt|dueDate|priority|title`), `order` (`asc|desc`), `page`, `limit` (max 50) and `today`
+`sort` (`createdAt|dueDate|priority|title|rank`), `order` (`asc|desc`), `page`, `limit` (max 50) and `today`
 (`YYYY-MM-DD`, the client's local date; see decision 3). Unknown values are rejected with a 400 rather than ignored.
 
 ## Project layout
@@ -109,25 +116,26 @@ All routes are under `/api`. Errors always have the same shape:
 server/
   src/
     config/env.ts          validated environment, fails fast on boot
-    models/                Mongoose schemas (User, Task)
+    models/                Mongoose schemas (User, Task, Counter for issue numbers)
     schemas/               zod schemas: the single definition of valid input
-    services/              business logic (auth, tasks), no Express in here
+    services/              business logic (auth, tasks, drag-and-drop ordering), no Express in here
     routes/                thin HTTP layer: parse, call a service, respond
     middleware/            auth guard, central error handler
+    utils/rank.ts          ordering inside a column
   tests/                   supertest + in-memory MongoDB
-  scripts/                 local MongoDB and seed data
+  scripts/                 local MongoDB, seed data, one-off migration
 client/
   src/
-    api/                   fetch wrapper, React Query hooks, types
-    components/            small presentational pieces
-    pages/                 sign in / register, tasks
+    api/                   fetch wrapper, React Query hooks, cache helpers, types
+    components/            shell, board (columns, cards, drag and drop), list, issue dialog
+    pages/                 sign in / register, board, list
     hooks/                 URL-backed filter state, debounce
     lib/dates.ts           all calendar-date logic in one tested place
 ```
 
 ## Decisions
 
-These are the three choices I would defend first.
+These are the four choices I would defend first.
 
 ### 1. Session handling: JWT in an `httpOnly` cookie, one origin in production
 
@@ -158,9 +166,47 @@ UTC. So the due date is a `YYYY-MM-DD` string (which also sorts and compares cor
 "overdue" is decided against the **client's local date**, which it sends as `today`. The server defaults to the
 UTC date if it is missing. All the date maths lives in one small, tested file (`client/src/lib/dates.ts`).
 
+### 4. Ordering by drag and drop: sparse ranks, decided on the server
+
+Each task has a numeric `rank` inside its column (1000, 2000, 3000, ...). Dropping a card between two others gives
+it the midpoint, so a drag is **one write**, not a renumbering of the whole column. The client only says "into this
+column, below that card"; the server looks up the real neighbours itself, so the result is right even when the
+client has only loaded the first 20 cards of a long column. If two ranks ever get too close to split, that one
+column is renumbered and the drop is retried (there is a test that forces this). On the client the board shows a local
+copy while a drop is in flight, so a card never jumps back to an old position.
+
 Also worth a mention: input is validated with zod at the edge (and the same rules are checked in the form for
 fast feedback), `completedAt` is kept in sync with `status` in a model hook rather than trusting the client, and
 the React Query layer does optimistic updates but always refetches afterwards so the server stays the source of truth.
+
+## Caching, performance and scale
+
+What is in place, and how it was checked:
+
+- **HTTP caching.** API reads are `Cache-Control: private, no-cache` with an ETag: the browser keeps the response but
+  must revalidate, and an unchanged list comes back as an empty `304`. `private` keeps per-user data out of shared
+  caches. In production the hashed files under `/assets` are `immutable` for a year, and `index.html` is always revalidated.
+- **Client cache (React Query).** Data is fresh for 30 s and kept for 10 min, so switching views or reopening a card
+  costs no request. After a change only the affected queries are refetched (a drag refreshes just the two columns
+  involved; editing a title refetches nothing, the server's response is written straight into every cache).
+- **Indexes match the queries.** Sorts end in `_id` (a stable tiebreaker for paging), so the indexes end in `_id` too.
+  A test runs `explain` and fails if a board column or the default list needs an in-memory sort. That test caught a
+  real mistake of mine while writing this.
+- **Less work per request.** Index-friendly sorts use a plain `find`; the aggregation pipeline only runs for the three
+  sorts that need computed keys. gzip on responses and assets. Code-split list view. Board columns load 20 cards at a time.
+- **Protection.** Per-IP rate limit on the API (600/min), and a much stricter one on login and register.
+- **Stateless API.** No server-side session state, so more instances can run behind a load balancer.
+
+What I have **not** done, so nothing here is overstated: no load test, no Redis or other shared cache layer, and the
+rate limiter is in memory (per instance). Pages use offset paging, which is fine at per-user sizes (hundreds to a few
+thousand tasks) but a cursor would be the next step for much larger lists. Stats are computed with a cheap indexed
+aggregation per request, which is the first thing I would cache (with invalidation on write) if it showed up in a profile.
+
+### Upgrading an existing database
+
+Issue numbers and ranks were added after the first version. If you already have tasks without them, run
+`npm run migrate:numbers --prefix server` once **before** starting the new API (the unique index on owner and number
+cannot be built while tasks without a number exist). It is idempotent.
 
 ## Left out on purpose
 
@@ -180,6 +226,6 @@ browser. If a token were stolen, it would stay valid until it expires, and chang
 devices. With one more day I would switch to a short-lived access token (about 15 minutes) plus a rotating refresh
 token stored hashed in MongoDB, so logout, password change and "sign out everywhere" can invalidate sessions for real.
 
-Smaller trade-offs I am aware of: search is a case-insensitive, escaped regex scoped to one user's tasks (fine at
+Smaller trade-offs I am aware of: no real-time sync (a second tab or device sees changes on its next refetch, not instantly), search is a case-insensitive, escaped regex scoped to one user's tasks (fine at
 this size, but a text index or Atlas Search would be the next step), and rate limiting is in memory, so it is
 per-instance rather than shared.
