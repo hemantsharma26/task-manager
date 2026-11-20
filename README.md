@@ -17,6 +17,9 @@ validation, ownership checks, ordering that survives drag and drop, caching, dat
 - **Colours:** give any column (status) its own colour; it tints its cards, header and lozenges
 - **Due date and time** from a designed calendar: quick picks (Today, Tomorrow, Next Monday, In a week), month navigation, a time row with presets, and full keyboard control. A task due today at 9:00 turns overdue once 9:00 has passed
 - Issue keys (`TM-12`), coloured priority flags, status lozenges, due badges that turn red when overdue
+- **A notepad on every task:** a small word processor (headings, bold, italic, underline, strike, lists, quotes, code, links, text and highlight colours, fonts, sizes, alignment) on a ruled yellow pad. It saves by itself while you type
+- **Attach images, videos and PDFs** when you create a task or later: drag and drop, thumbnails, upload progress, images open large, videos play in place, PDFs open in a tab
+- **A colour for each task** (it tints the whole card), as well as for each column and each priority
 - Issue dialog with in-place editing; the open issue is in the URL, so it can be linked to
 - Search, filters, five sort orders, per-column "Show more", filters kept in the URL
 - Optimistic updates with rollback, animated and responsive (columns snap on phones), light theme
@@ -86,12 +89,13 @@ then `server/.env` (yours, never committed). The server validates everything at 
 | `LOGIN_MAX_ATTEMPTS`, `LOGIN_LOCKOUT_MINUTES` | default: 5 failures lock that account and address for 15 minutes        |
 | `CACHE_TTL_*_SECONDS`, `CACHE_ENABLED`    | how long cached reads may be served; writes also invalidate at once         |
 | `RATE_LIMIT_*`                            | per-IP API limit, strict sign-in limit, per-user write limit                |
+| `UPLOAD_DIR`                      | `uploads`                | Where attached files are stored (relative to `server/`). Back it up           |
 | `ALLOWED_ORIGINS`, `HSTS_ENABLED`, `COOKIE_SECURE`, `TRUST_PROXY_HOPS` | production hardening switches |
 
 ## Tests and checks
 
 ```bash
-npm test             # 200 API tests + 70 UI/unit tests
+npm test             # 263 API tests + 86 UI/unit tests
 npm run typecheck
 ```
 
@@ -132,6 +136,9 @@ All routes are under `/api`. Errors always have one shape:
 | GET    | `/tasks/stats`            | Counts per column plus the number of overdue tasks                 |
 | POST   | `/tasks`                  | Create (next issue number, bottom of its column)                   |
 | GET    | `/tasks/:id`              | Read one                                                           |
+| POST   | `/tasks/:id/attachments`  | Upload up to 5 files (multipart field `files`)                     |
+| GET    | `/tasks/:id/attachments/:attId` | The file itself (Range requests work, so video can be scrubbed) |
+| DELETE | `/tasks/:id/attachments/:attId` | Remove a file                                                |
 | PATCH  | `/tasks/:id`              | Update any subset of fields                                        |
 | POST   | `/tasks/:id/move`         | Drag and drop: `{ status, afterId }`                               |
 | DELETE | `/tasks/:id`              | Delete                                                             |
@@ -230,6 +237,7 @@ Redis outage costs speed and never availability (there is a test that runs the w
 | XSS                                  | Strict Content-Security-Policy (no inline or eval script, same-origin only), tokens unreadable from JavaScript, React escapes output |
 | CSRF                                 | `SameSite` cookies (the refresh cookie is `Strict` and path-limited), JSON-only bodies (a plain HTML form cannot send them), and an Origin / `Sec-Fetch-Site` check that refuses cross-site writes |
 | NoSQL injection, prototype pollution | zod accepts only plain typed values, **and** a filter refuses any `$operator`, dotted, bracketed or `__proto__` key before it reaches code |
+| Malicious notes and uploads          | Notes are cleaned on the server against an allow-list (tags, attributes, style values, fonts, link schemes) and again in the browser. Files are identified by their **first bytes**, never by name or browser type; only images, video and PDF are accepted (SVG is not); per-type size limits; random on-disk names inside the owner's folder; served with `nosniff` and a sandbox CSP; removed with their task |
 | Clickjacking, MIME sniffing, leakage | `frame-ancestors none` and `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, locked-down `Permissions-Policy`, `Cross-Origin-*` policies |
 | Abuse and overload                   | Rate limits per IP, per user for writes, and strict for auth (Redis-backed, so shared by all instances); slow-client timeouts; body size caps |
 | Enumeration and data leaks           | Another user's ids always answer 404; errors never include stack traces; auth responses are `no-store`; logs never contain cookies, bodies or full emails |
