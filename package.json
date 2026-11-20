@@ -1,0 +1,20 @@
+{
+  "name": "task-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Task Manager: React + Express + MongoDB",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix client && cp -n server/.env.example server/.env || true",
+    "db": "npm run db:memory --prefix server",
+    "seed": "npm run seed --prefix server",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "start": "NODE_ENV=production npm start --prefix server",
+    "test": "npm test --prefix server && npm test --prefix client",
+    "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
