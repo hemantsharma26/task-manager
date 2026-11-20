@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/http';
 import { useDeleteTask, useTask, useUpdateTask } from '../api/tasks';
 import { useColumnLookup } from '../api/columns';
-import { PRIORITIES, PRIORITY_LABEL, type Task, type TaskInput, type TaskPriority } from '../api/types';
+import { usePriorities } from '../api/priorities';
+import type { Task, TaskInput } from '../api/types';
 import { toneFor } from '../lib/tone';
 import { Avatar } from './Avatar';
-import { CloseIcon, PriorityIcon, TrashIcon } from './Icons';
+import { DateTimeField } from './DateTimeField';
+import { CloseIcon, TrashIcon } from './Icons';
+import { PriorityIcon } from './PriorityIcon';
 import { useToast } from './Toast';
 
 interface Props {
@@ -44,7 +47,8 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const { notify } = useToast();
-  const { columns, isDone } = useColumnLookup();
+  const { columns, isDone, colorOf } = useColumnLookup();
+  const { data: priorities = [] } = usePriorities();
   const [confirming, setConfirming] = useState(false);
 
   const save = (changes: Partial<TaskInput>) =>
@@ -113,7 +117,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
             <dd>
               <select
                 className="select select-status"
-                style={{ background: toneFor(task.status, isDone(task.status)).bg, color: toneFor(task.status, isDone(task.status)).fg }}
+                style={{ background: toneFor(task.status, isDone(task.status), colorOf(task.status)).bg, color: toneFor(task.status, isDone(task.status), colorOf(task.status)).fg }}
                 value={task.status}
                 aria-label="Status"
                 onChange={(e) => save({ status: e.target.value })}
@@ -129,10 +133,10 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
             <dt>Priority</dt>
             <dd className="with-icon">
               <PriorityIcon priority={task.priority} />
-              <select className="select select-plain" value={task.priority} aria-label="Priority" onChange={(e) => save({ priority: e.target.value as TaskPriority })}>
-                {PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {PRIORITY_LABEL[p]}
+              <select className="select select-plain" value={task.priority} aria-label="Priority" onChange={(e) => save({ priority: e.target.value })}>
+                {priorities.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -140,19 +144,7 @@ function IssueBody({ id, owner, onClose }: { id: string; owner: string; onClose:
 
             <dt>Due date</dt>
             <dd>
-              <input
-                type="date"
-                className="select select-plain"
-                aria-label="Due date"
-                value={task.dueDate ?? ''}
-                min="2000-01-01"
-                onChange={(e) => save({ dueDate: e.target.value || null })}
-              />
-              {task.dueDate && (
-                <button type="button" className="link-btn clear-date" onClick={() => save({ dueDate: null })}>
-                  Clear
-                </button>
-              )}
+              <DateTimeField label="Due date" value={{ date: task.dueDate, time: task.dueTime }} align="right" onChange={(v) => save({ dueDate: v.date, dueTime: v.time })} />
             </dd>
 
             <dt>Owner</dt>

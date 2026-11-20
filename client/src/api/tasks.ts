@@ -1,5 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { todayLocal } from '../lib/dates';
+import { nowTimeLocal, todayLocal } from '../lib/dates';
 import { appendToColumnCaches, findTaskInCaches, moveTaskBetweenColumnCaches, patchTaskInCaches, removeTaskFromCaches, restoreSnapshot, takeSnapshot, TASKS_KEY } from './cache';
 import { http } from './http';
 import { COLUMNS_KEY } from './columns';
@@ -9,16 +9,19 @@ export const COLUMN_PAGE_SIZE = 20;
 export const LIST_PAGE_SIZE = 15;
 
 export const keys = {
-  column: (status: TaskStatus, f: CommonFilters, today: string) => ['tasks', 'column', status, f, today] as const,
-  list: (f: ListFilters, today: string) => ['tasks', 'list', f, today] as const,
+  // "Overdue" depends on the time of day too, so that filter's results are keyed by the minute they were asked in.
+  column: (status: TaskStatus, f: CommonFilters, today: string) => ['tasks', 'column', status, f, today, f.due === 'overdue' ? nowTimeLocal() : null] as const,
+  list: (f: ListFilters, today: string) => ['tasks', 'list', f, today, f.due === 'overdue' ? nowTimeLocal() : null] as const,
   detail: (id: string) => ['tasks', 'detail', id] as const,
-  stats: (today: string) => ['stats', today] as const,
+  stats: (today: string, now: string) => ['stats', today, now] as const,
 };
 
 function params(base: Record<string, string>, f: CommonFilters) {
   const p = new URLSearchParams(base);
   if (f.priority) p.set('priority', f.priority);
   if (f.due) p.set('due', f.due);
+  // With the client's current time the server can count "due today at 9:00" as overdue once 9:00 has passed.
+  if (f.due === 'overdue') p.set('nowTime', nowTimeLocal());
   if (f.q) p.set('q', f.q);
   return p;
 }
@@ -73,9 +76,10 @@ export function useTask(id: string | null) {
 
 export function useStats() {
   const today = todayLocal();
+  const now = nowTimeLocal();
   return useQuery({
-    queryKey: keys.stats(today),
-    queryFn: ({ signal }) => http<TaskStats>(`/tasks/stats?today=${today}`, { signal }),
+    queryKey: keys.stats(today, now),
+    queryFn: ({ signal }) => http<TaskStats>(`/tasks/stats?today=${today}&nowTime=${now}`, { signal }),
   });
 }
 
@@ -121,6 +125,7 @@ export function useCreateTask() {
         status,
         priority: input.priority ?? 'medium',
         dueDate: input.dueDate ?? null,
+        dueTime: input.dueTime ?? null,
         completedAt: null,
         createdAt: now,
         updatedAt: now,

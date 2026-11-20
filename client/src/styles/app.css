@@ -1522,6 +1522,293 @@ dialog.dialog[open]::backdrop {
   font-weight: 700;
 }
 
+/* ---------- date and time field ---------- */
+.datefield {
+  position: relative;
+}
+.datefield-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.datefield-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(9, 30, 66, 0.06);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.datefield-trigger:hover {
+  background: rgba(9, 30, 66, 0.12);
+}
+.datefield-trigger.is-empty {
+  color: var(--muted);
+}
+.datefield-trigger[aria-expanded='true'] {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+/* Fixed, so no dialog or scroll area can cut it off; its position is set from the field's place on screen. */
+.datepop {
+  position: fixed;
+  z-index: 1000;
+  width: 316px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(9, 30, 66, 0.22), 0 0 1px rgba(9, 30, 66, 0.31);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: pop 0.14s ease both;
+}
+.quick-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(9, 30, 66, 0.06);
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.chip:hover {
+  background: rgba(9, 30, 66, 0.12);
+}
+.chip.is-on {
+  background: var(--blue);
+  color: #fff;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cal-head strong {
+  font-size: 14px;
+}
+.cal-grid {
+  display: grid;
+  gap: 2px;
+}
+.cal-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 4px 0;
+}
+.cal-day {
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cal-day:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+.cal-day.is-other {
+  color: #a5adba;
+}
+.cal-day.is-past:not(.is-selected) {
+  color: var(--muted);
+}
+.cal-day.is-today {
+  box-shadow: inset 0 0 0 2px var(--blue);
+  font-weight: 700;
+}
+.cal-day.is-selected {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+}
+.cal-day:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.time-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.time-row .check {
+  gap: 6px;
+}
+.time-input {
+  width: 140px;
+}
+.pop-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ---------- colour picker ---------- */
+.colorpicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+.swatch:hover {
+  transform: scale(1.12);
+}
+.swatch.is-on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--focus);
+}
+.swatch-none {
+  background: linear-gradient(135deg, #fff 45%, #c9372c 45%, #c9372c 55%, #fff 55%);
+  border-color: var(--border);
+  color: var(--text);
+}
+.color-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.color-custom input[type='color'] {
+  width: 34px;
+  height: 30px;
+  padding: 2px;
+  cursor: pointer;
+}
+.hex-input {
+  width: 110px;
+  height: 30px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- priorities ---------- */
+.prio {
+  display: inline-flex;
+}
+.prio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prio-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.prio-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prio-swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+}
+.prio-swatch:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+.prio-name {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  background: transparent;
+  border-color: transparent;
+  font-weight: 500;
+}
+.prio-name:hover {
+  background: var(--sunken);
+}
+.prio-name:focus {
+  background: #fff;
+}
+.prio-rank {
+  font-size: 11px;
+  width: 52px;
+  text-align: right;
+}
+.rot-up {
+  display: inline-flex;
+  transform: rotate(90deg);
+}
+.rot-down {
+  display: inline-flex;
+  transform: rotate(-90deg);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.prio-delete {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.add-prio {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.grow {
+  flex: 1;
+}
+.menu-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.menu-color {
+  padding: 4px 16px 8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;

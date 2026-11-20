@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useColumns } from '../api/columns';
-import { PRIORITIES, PRIORITY_LABEL, type DueFilter, type ListFilters, type TaskPriority } from '../api/types';
+import { usePriorities } from '../api/priorities';
+import type { DueFilter, ListFilters } from '../api/types';
 import { useDebounced } from '../hooks/useDebounced';
 
 interface Props {
@@ -22,6 +23,7 @@ const DUE_OPTIONS: { value: DueFilter | ''; label: string }[] = [
 
 export function FilterBar({ filters, onChange, onReset, isFiltered, showStatus }: Props) {
   const { data: columns = [] } = useColumns();
+  const { data: priorities = [] } = usePriorities();
   // The input is edited locally and pushed to the URL after a pause, so we don't fire a request (and a
   // history entry) on every keystroke. lastSent stops the two effects below from echoing each other and
   // overwriting what the user is still typing.
@@ -66,11 +68,11 @@ export function FilterBar({ filters, onChange, onReset, isFiltered, showStatus }
 
       <label>
         <span className="sr-only">Priority</span>
-        <select className="select" value={filters.priority ?? ''} onChange={(e) => onChange({ priority: (e.target.value || undefined) as TaskPriority | undefined })}>
+        <select className="select" value={filters.priority ?? ''} onChange={(e) => onChange({ priority: e.target.value || undefined })}>
           <option value="">Priority</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {PRIORITY_LABEL[p]}
+          {priorities.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.name}
             </option>
           ))}
         </select>

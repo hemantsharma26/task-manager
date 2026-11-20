@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { MAX_COLUMNS, useAddColumn } from '../../api/columns';
 import { ApiError } from '../../api/http';
+import { ColorPicker } from '../ColorPicker';
 import { PlusIcon } from '../Icons';
 import { useToast } from '../Toast';
 
@@ -9,6 +10,7 @@ export function AddColumn({ count, disabled, onAdded }: { count: number; disable
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [isDone, setIsDone] = useState(false);
+  const [color, setColor] = useState<string | null>(null);
   const [error, setError] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const add = useAddColumn();
@@ -22,6 +24,7 @@ export function AddColumn({ count, disabled, onAdded }: { count: number; disable
     setOpen(false);
     setName('');
     setIsDone(false);
+    setColor(null);
     setError('');
   };
 
@@ -30,7 +33,7 @@ export function AddColumn({ count, disabled, onAdded }: { count: number; disable
     const trimmed = name.trim();
     if (!trimmed) return setError('Give the column a name');
     add.mutate(
-      { name: trimmed, isDone },
+      { name: trimmed, isDone, color },
       {
         onSuccess: () => {
           notify('success', `Column "${trimmed}" added`);
@@ -73,6 +76,7 @@ export function AddColumn({ count, disabled, onAdded }: { count: number; disable
             <input type="checkbox" checked={isDone} onChange={(e) => setIsDone(e.target.checked)} />
             <span>Counts as done</span>
           </label>
+          <ColorPicker label="Column colour" value={color} allowDefault onChange={setColor} />
           {error && (
             <small className="field-error" role="alert">
               {error}

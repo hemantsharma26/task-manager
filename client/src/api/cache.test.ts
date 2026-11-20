@@ -11,6 +11,7 @@ const task = (n: number, over: Partial<Task> = {}): Task => ({
   status: 'todo',
   priority: 'medium',
   dueDate: null,
+  dueTime: null,
   completedAt: null,
   createdAt: '2026-11-01T00:00:00Z',
   updatedAt: '2026-11-01T00:00:00Z',

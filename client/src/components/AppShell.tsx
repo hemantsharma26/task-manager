@@ -5,6 +5,7 @@ import { useCreateTask, useStats } from '../api/tasks';
 import { useSelectedIssue, useTaskFilters } from '../hooks/useTaskFilters';
 import { Avatar } from './Avatar';
 import { AccountDialog } from './AccountDialog';
+import { PriorityDialog } from './PriorityDialog';
 import { CreateDialog } from './CreateDialog';
 import { BoardIcon, FlagIcon, ListIcon, PlusIcon } from './Icons';
 import { IssueDialog } from './IssueDialog';
@@ -28,6 +29,7 @@ export function AppShell() {
   const { data: stats } = useStats();
   const [menu, setMenu] = useState(false);
   const [account, setAccount] = useState(false);
+  const [priorities, setPriorities] = useState(false);
 
   if (!user) return null;
 
@@ -101,6 +103,13 @@ export function AppShell() {
               </button>
             ))}
           </div>
+          <p className="side-label">Customise</p>
+          <div className="side-nav">
+            <button type="button" className="side-link side-btn" onClick={() => setPriorities(true)}>
+              <FlagIcon />
+              <span>Priorities</span>
+            </button>
+          </div>
         </aside>
 
         <main className="main">
@@ -120,6 +129,7 @@ export function AppShell() {
         }}
       />
       <AccountDialog open={account} onClose={() => setAccount(false)} />
+      <PriorityDialog open={priorities} onClose={() => setPriorities(false)} />
       <IssueDialog id={selected} owner={user.name} onClose={() => select(null)} />
     </div>
   );

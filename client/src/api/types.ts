@@ -1,15 +1,8 @@
-// Board columns, left to right.
-export const PRIORITIES = ['low', 'medium', 'high'] as const;
-
 /** The key of one of the user's board columns. */
 export type TaskStatus = string;
-export type TaskPriority = (typeof PRIORITIES)[number];
 
-export const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-};
+/** The key of one of the user's priorities. */
+export type TaskPriority = string;
 
 export interface User {
   id: string;
@@ -28,6 +21,8 @@ export interface Task {
   priority: TaskPriority;
   /** YYYY-MM-DD or null */
   dueDate: string | null;
+  /** HH:MM (24 hour) on the due date, or null. */
+  dueTime: string | null;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -71,6 +66,8 @@ export interface Column {
   name: string;
   /** Tasks in a "done" column are finished: struck through, and never overdue. */
   isDone: boolean;
+  /** Hex colour chosen by the user, or null for the default look. */
+  color: string | null;
 }
 
 export interface TaskInput {
@@ -79,4 +76,14 @@ export interface TaskInput {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  dueTime: string | null;
+}
+
+/** A priority. Which ones exist, their names, colours and order are up to the user. */
+export interface Priority {
+  id: string;
+  key: TaskPriority;
+  name: string;
+  /** Hex colour of the flag. */
+  color: string;
 }

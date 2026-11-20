@@ -7,7 +7,8 @@ import { toneFor } from '../../lib/tone';
 import type { Task } from '../../api/types';
 import { Avatar } from '../Avatar';
 import { DueBadge } from '../DueBadge';
-import { CheckIcon, GripIcon, PriorityIcon } from '../Icons';
+import { CheckIcon, GripIcon } from '../Icons';
+import { PriorityIcon } from '../PriorityIcon';
 
 interface CardBodyProps {
   task: Task;
@@ -24,7 +25,7 @@ export function CardBody({ task, today, owner }: CardBodyProps) {
       <p className="card-title">{task.title}</p>
       {task.dueDate && (
         <div className="card-due">
-          <DueBadge due={task.dueDate} done={done} today={today} />
+          <DueBadge due={task.dueDate} time={task.dueTime} done={done} today={today} />
         </div>
       )}
       <div className="card-foot">
@@ -58,9 +59,9 @@ interface CardProps extends CardBodyProps {
 export const Card = memo(function Card({ task, today, owner, onOpen, enter, index }: CardProps) {
   // A card that is still being saved has no real id yet, so it can be neither opened nor dragged.
   const pending = isTempId(task.id);
-  const { isDone } = useColumnLookup();
+  const { isDone, colorOf } = useColumnLookup();
   const done = isDone(task.status);
-  const accent = toneFor(task.status, done).accent;
+  const accent = toneFor(task.status, done, colorOf(task.status)).accent;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: pending,

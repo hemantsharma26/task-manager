@@ -37,7 +37,7 @@ export function Column({ column, index, columns, editable, tasks, total, loading
   // The column itself is a drop target too, so a card can be dropped into an empty column.
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
   const remaining = Math.max(0, total - tasks.length);
-  const accent = toneFor(column.key, column.isDone).accent;
+  const accent = toneFor(column.key, column.isDone, column.color).accent;
 
   return (
     <section className="column" data-status={column.key} data-accent={accent ? '' : undefined} style={{ ['--accent' as string]: accent }} aria-label={column.name}>
@@ -149,6 +149,7 @@ function ColumnHeader({ column, index, columns, total, editable, onDelete }: Pic
           onRename={() => setRenaming(true)}
           onMove={moveBy}
           onToggleDone={() => update.mutate({ id: column.id, changes: { isDone: !column.isDone } }, { onError: fail })}
+          onColor={(color) => update.mutate({ id: column.id, changes: { color } }, { onError: fail })}
           onDelete={() => onDelete(column)}
         />
       )}

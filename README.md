@@ -13,7 +13,10 @@ validation, ownership checks, ordering that survives drag and drop, caching, dat
 
 - Board with drag and drop (mouse, touch from a grip handle, or keyboard: Space, arrows, Space) and a sortable List view
 - **Columns are yours:** add, rename, reorder, mark as "counts as done" and delete (with a choice of where its tasks go). New accounts start with To do, In progress, Issue, Re-work and Done
-- Issue keys (`TM-12`), priority icons, status lozenges, due-date badges that turn red when overdue
+- **Priorities are yours too:** make as many as you like, with your own names, colours and order (the order is what "sort by priority" follows). New accounts start with Low, Medium and High
+- **Colours:** give any column (status) its own colour; it tints its cards, header and lozenges
+- **Due date and time** from a designed calendar: quick picks (Today, Tomorrow, Next Monday, In a week), month navigation, a time row with presets, and full keyboard control. A task due today at 9:00 turns overdue once 9:00 has passed
+- Issue keys (`TM-12`), coloured priority flags, status lozenges, due badges that turn red when overdue
 - Issue dialog with in-place editing; the open issue is in the URL, so it can be linked to
 - Search, filters, five sort orders, per-column "Show more", filters kept in the URL
 - Optimistic updates with rollback, animated and responsive (columns snap on phones), light theme
@@ -88,7 +91,7 @@ then `server/.env` (yours, never committed). The server validates everything at 
 ## Tests and checks
 
 ```bash
-npm test             # 169 API tests + 37 UI/unit tests
+npm test             # 200 API tests + 70 UI/unit tests
 npm run typecheck
 ```
 
@@ -116,10 +119,15 @@ All routes are under `/api`. Errors always have one shape:
 | GET    | `/auth/sessions`          | Devices this user is signed in on                                  |
 | DELETE | `/auth/sessions/:id`      | Sign one device out                                                |
 | GET    | `/columns`                | The board's columns, in order                                      |
-| POST   | `/columns`                | Add a column `{ name, isDone }`                                    |
-| PATCH  | `/columns/:id`            | Rename, or change "counts as done"                                 |
+| POST   | `/columns`                | Add a column `{ name, isDone, color }`                             |
+| PATCH  | `/columns/:id`            | Rename, recolour, or change "counts as done"                       |
 | POST   | `/columns/:id/move`       | Reorder: `{ afterId }` (null = far left)                           |
 | DELETE | `/columns/:id?moveTo=key` | Delete; `moveTo` is required if it still holds tasks               |
+| GET    | `/priorities`             | Your priorities, least important first                             |
+| POST   | `/priorities`             | Add one `{ name, color }`                                          |
+| PATCH  | `/priorities/:id`         | Rename or recolour                                                 |
+| POST   | `/priorities/:id/move`    | Reorder: `{ afterId }` (null = least important)                    |
+| DELETE | `/priorities/:id?moveTo=key` | Delete; `moveTo` is required if tasks still use it              |
 | GET    | `/tasks`                  | List with filters, sort and pagination                             |
 | GET    | `/tasks/stats`            | Counts per column plus the number of overdue tasks                 |
 | POST   | `/tasks`                  | Create (next issue number, bottom of its column)                   |
@@ -128,8 +136,9 @@ All routes are under `/api`. Errors always have one shape:
 | POST   | `/tasks/:id/move`         | Drag and drop: `{ status, afterId }`                               |
 | DELETE | `/tasks/:id`              | Delete                                                             |
 
-`GET /tasks` takes `status` (a column key), `priority`, `due` (`overdue|today|week|none`), `q`, `sort`
-(`createdAt|dueDate|priority|title|rank`), `order`, `page`, `limit` (max 50) and `today` (the client's local date).
+`GET /tasks` takes `status` (a column key), `priority` (a priority key), `due` (`overdue|today|week|none`), `q`, `sort`
+(`createdAt|dueDate|priority|title|rank`), `order`, `page`, `limit` (max 50), `today` (the client's local date) and `nowTime`
+(its local time, HH:MM, so "overdue" can include tasks whose time today has passed). A task has `dueDate` (YYYY-MM-DD) and an optional `dueTime` (HH:MM, 24 hour; only with a date).
 Unknown values are rejected with a 400 rather than ignored. Cached reads carry an `X-Cache: HIT|MISS` header.
 
 ## Project layout
@@ -189,9 +198,9 @@ live in the URL, which gives bookmarkable views and a working back button, and u
 
 ### 3. Due dates are calendar dates, not timestamps
 
-"Due 20 Nov" means that day wherever you are. A `Date` would shift by a day for anyone not in UTC, so the due date is a
-`YYYY-MM-DD` string (which also sorts correctly as text) and "overdue" is decided against the **client's local date**.
-All the date maths lives in one small, tested file.
+"Due 20 Nov, 5:30 PM" means that day and that wall-clock time wherever you are. A `Date` would shift for anyone not in UTC, so the
+due date is a `YYYY-MM-DD` string (which also sorts correctly as text) and the time is a separate `HH:MM` string. "Overdue" is decided
+against the **client's own local date and time**, which it sends with the request. All the date maths lives in two small, tested files.
 
 ### 4. Ordering by drag and drop: sparse ranks, decided on the server
 

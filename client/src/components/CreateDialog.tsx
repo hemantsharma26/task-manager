@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/http';
 import { useColumns } from '../api/columns';
-import { PRIORITIES, PRIORITY_LABEL, type TaskInput } from '../api/types';
+import { usePriorities } from '../api/priorities';
+import type { TaskInput } from '../api/types';
+import { DateTimeField } from './DateTimeField';
 import { CloseIcon } from './Icons';
 
 interface Props {
@@ -10,7 +12,7 @@ interface Props {
   onSubmit: (input: TaskInput) => Promise<unknown>;
 }
 
-const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null };
+const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null };
 
 type Errors = Partial<Record<keyof TaskInput | 'form', string>>;
 
@@ -26,6 +28,7 @@ function validate(v: TaskInput): Errors {
 export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const { data: columns = [] } = useColumns();
+  const { data: priorities = [] } = usePriorities();
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -36,7 +39,9 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
     if (!el) return;
     if (open && !el.open) {
       // New tasks start in the first column of the board.
-      setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo' });
+      // New tasks start in the first column, with Medium (or the middle priority if Medium was deleted).
+      const middle = priorities.find((p) => p.key === 'medium') ?? priorities[Math.floor(priorities.length / 2)];
+      setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo', priority: middle?.key ?? 'medium' });
       setErrors({});
       setSaving(false);
       el.showModal();
@@ -115,10 +120,10 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
         <div className="field-row">
           <label className="field">
             <span>Priority</span>
-            <select value={values.priority} onChange={(e) => set('priority', e.target.value as TaskInput['priority'])}>
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {PRIORITY_LABEL[p]}
+            <select value={values.priority} onChange={(e) => set('priority', e.target.value)}>
+              {priorities.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -135,11 +140,11 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
             </select>
           </label>
 
-          <label className="field">
+          <div className="field">
             <span>Due date</span>
-            <input type="date" value={values.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value || null)} aria-invalid={!!errors.dueDate} />
+            <DateTimeField label="Due date" value={{ date: values.dueDate, time: values.dueTime }} align="right" onChange={(v) => setValues((cur) => ({ ...cur, dueDate: v.date, dueTime: v.time }))} />
             {errors.dueDate && <small className="field-error">{errors.dueDate}</small>}
-          </label>
+          </div>
         </div>
 
         <div className="dialog-actions">

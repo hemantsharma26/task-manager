@@ -3,11 +3,11 @@ import { useTasks } from '../api/tasks';
 import type { ListFilters, SortField } from '../api/types';
 import { todayLocal } from '../lib/dates';
 import { DueBadge } from './DueBadge';
-import { PriorityIcon } from './Icons';
+import { PriorityIcon } from './PriorityIcon';
+import { usePriorityLookup } from '../api/priorities';
 import { Pagination } from './Pagination';
 import { StatusLozenge } from './Lozenge';
 import { Avatar } from './Avatar';
-import { PRIORITY_LABEL } from '../api/types';
 import { useColumnLookup } from '../api/columns';
 
 interface Props {
@@ -32,6 +32,7 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
   const { data, isPending, isError, error, refetch, isPlaceholderData } = useTasks(filters);
   const today = todayLocal();
   const { isDone } = useColumnLookup();
+  const { nameOf } = usePriorityLookup();
 
   // If the last row on a page is deleted, step back to a page that still exists.
   useEffect(() => {
@@ -99,10 +100,10 @@ export function ListView({ filters, owner, isFiltered, onChange, onReset, onOpen
                     </td>
                     <td>
                       <span className="prio-cell">
-                        <PriorityIcon priority={t.priority} /> {PRIORITY_LABEL[t.priority]}
+                        <PriorityIcon priority={t.priority} /> {nameOf(t.priority)}
                       </span>
                     </td>
-                    <td>{t.dueDate ? <DueBadge due={t.dueDate} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
+                    <td>{t.dueDate ? <DueBadge due={t.dueDate} time={t.dueTime} done={isDone(t.status)} today={today} /> : <span className="muted">None</span>}</td>
                     <td>
                       <Avatar name={owner} size={22} />
                     </td>

@@ -1,5 +1,4 @@
 import type { SVGProps } from 'react';
-import type { TaskPriority } from '../api/types';
 
 const base = (size: number): SVGProps<SVGSVGElement> => ({
   width: size,
@@ -67,33 +66,31 @@ export const AlertIcon = ({ size = 14 }: P) => (
   </svg>
 );
 
-export const FlagIcon = ({ size = 16 }: P) => (
-  <svg {...base(size)}>
+export const FlagIcon = ({ size = 16, filled = false }: P & { filled?: boolean }) => (
+  <svg {...base(size)} fill={filled ? 'currentColor' : 'none'}>
     <path d="M4 14V2.5M4 3h8l-1.5 3L12 9H4" />
   </svg>
 );
 
-/** Same visual language as Jira: red up-chevron, orange equals, blue down-chevron. */
-export function PriorityIcon({ priority, size = 16 }: { priority: TaskPriority; size?: number }) {
-  const common = { ...base(size), strokeWidth: 1.8 };
-  if (priority === 'high')
-    return (
-      <svg {...common} className="prio prio-high">
-        <path d="M3.5 9.5L8 5l4.5 4.5M3.5 13L8 8.5 12.5 13" />
-      </svg>
-    );
-  if (priority === 'low')
-    return (
-      <svg {...common} className="prio prio-low">
-        <path d="M3.5 6.5L8 11l4.5-4.5M3.5 3L8 7.5 12.5 3" />
-      </svg>
-    );
-  return (
-    <svg {...common} className="prio prio-medium">
-      <path d="M3.5 6h9M3.5 10h9" />
-    </svg>
-  );
-}
+
+export const ChevronLeftIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2}>
+    <path d="M10 3.5L5.5 8l4.5 4.5" />
+  </svg>
+);
+
+export const ChevronRightIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2}>
+    <path d="M6 3.5L10.5 8 6 12.5" />
+  </svg>
+);
+
+export const ClockIcon = ({ size = 14 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M8 4.5V8l2.2 1.4" />
+  </svg>
+);
 
 export const GripIcon = ({ size = 16 }: P) => (
   <svg {...base(size)} strokeWidth={2.2}>
