@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Column } from '../../api/types';
+import { ColorPicker } from '../ColorPicker';
 import { CheckIcon, DotsIcon } from '../Icons';
 
 interface Props {
@@ -9,18 +10,23 @@ interface Props {
   onRename: () => void;
   onMove: (direction: -1 | 1) => void;
   onToggleDone: () => void;
+  onColor: (color: string | null) => void;
   onDelete: () => void;
 }
 
 /** The "..." in a column header: rename, move, mark as a finished column, delete. */
-export function ColumnMenu({ column, index, count, onRename, onMove, onToggleDone, onDelete }: Props) {
+export function ColumnMenu({ column, index, count, onRename, onMove, onToggleDone, onColor, onDelete }: Props) {
   const [open, setOpen] = useState(false);
+  const [colouring, setColouring] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: Event) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !root.current?.contains(e.target as Node)) setOpen(false);
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !root.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setColouring(false);
+      }
     };
     document.addEventListener('pointerdown', close);
     document.addEventListener('keydown', close);
@@ -55,6 +61,15 @@ export function ColumnMenu({ column, index, count, onRename, onMove, onToggleDon
             <span>Counts as done</span>
             {column.isDone && <CheckIcon size={14} />}
           </button>
+          <button type="button" role="menuitem" className="menu-item menu-check" aria-expanded={colouring} onClick={() => setColouring((c) => !c)}>
+            <span>Colour</span>
+            <span className="menu-dot" style={{ background: column.color ?? '#b3b9c4' }} />
+          </button>
+          {colouring && (
+            <div className="menu-color">
+              <ColorPicker label={`Colour of ${column.name}`} value={column.color} allowDefault onChange={onColor} />
+            </div>
+          )}
           <div className="menu-sep" />
           <button type="button" role="menuitem" className="menu-item menu-danger" disabled={count <= 1} onClick={run(onDelete)}>
             Delete column…

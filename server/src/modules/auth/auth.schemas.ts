@@ -48,8 +48,18 @@ export const changePasswordSchema = z.object({
   newPassword,
 });
 
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z.object({
+  // The link's secret: a long url-safe string, nothing else (an object here is a type error, not a query).
+  token: z.string().min(20).max(200).regex(/^[\w-]+$/),
+  newPassword,
+});
+
 export const passwordIssueMessage = (issue: PasswordIssue) => ISSUE_MESSAGE[issue];
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

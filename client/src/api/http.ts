@@ -22,6 +22,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Which board requests are about. Null is the person's own board; otherwise the id of a board they were invited to, sent with
+ * every request as X-Workspace-Id (the server checks they really are on that team).
+ */
+let activeWorkspace: string | null = null;
+export const setActiveWorkspace = (id: string | null) => {
+  activeWorkspace = id;
+};
+export const getActiveWorkspace = () => activeWorkspace;
+// Account-level calls are not about any board.
+const BOARDLESS_PATHS = ['/auth', '/workspaces', '/invitations'];
+
 type Listener = () => void;
 let onUnauthorized: Listener = () => {};
 
@@ -41,7 +53,7 @@ let inFlightRefresh: Promise<boolean> | null = null;
  * it). Many requests failing at once share one refresh, and across browser tabs a lock makes them take turns, so two tabs
  * never present the same refresh token at the same moment.
  */
-function refreshAccess(): Promise<boolean> {
+export function refreshAccess(): Promise<boolean> {
   inFlightRefresh ??= (async () => {
     const run = async () => {
       try {
@@ -66,11 +78,15 @@ interface RequestInit2 {
 }
 
 export async function http<T>(path: string, init: RequestInit2 = {}, retried = false): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (init.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (activeWorkspace && !BOARDLESS_PATHS.some((p) => path.startsWith(p))) headers['X-Workspace-Id'] = activeWorkspace;
+
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method: init.method ?? 'GET',
-      headers: init.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
       credentials: 'same-origin',
       signal: init.signal,

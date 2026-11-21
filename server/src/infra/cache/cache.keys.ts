@@ -38,5 +38,6 @@ export const cacheKeys = {
   version: (userId: string) => join(CACHE_NAMESPACE.USER, userId, CACHE_NAMESPACE.VERSION),
   taskList: (userId: string, version: number, query: unknown) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.TASK_LIST}${CACHE_KEY_SEPARATOR}${hashOf(query)}`,
   taskStats: (userId: string, version: number, query: unknown) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.TASK_STATS}${CACHE_KEY_SEPARATOR}${hashOf(query)}`,
+  priorities: (userId: string, version: number) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.PRIORITIES}`,
   columns: (userId: string, version: number) => `${userScope(userId, version)}${CACHE_KEY_SEPARATOR}${CACHE_NAMESPACE.COLUMNS}`,
 };

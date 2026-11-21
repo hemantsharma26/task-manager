@@ -1,5 +1,4 @@
 import type { SVGProps } from 'react';
-import type { TaskPriority } from '../api/types';
 
 const base = (size: number): SVGProps<SVGSVGElement> => ({
   width: size,
@@ -67,33 +66,31 @@ export const AlertIcon = ({ size = 14 }: P) => (
   </svg>
 );
 
-export const FlagIcon = ({ size = 16 }: P) => (
-  <svg {...base(size)}>
+export const FlagIcon = ({ size = 16, filled = false }: P & { filled?: boolean }) => (
+  <svg {...base(size)} fill={filled ? 'currentColor' : 'none'}>
     <path d="M4 14V2.5M4 3h8l-1.5 3L12 9H4" />
   </svg>
 );
 
-/** Same visual language as Jira: red up-chevron, orange equals, blue down-chevron. */
-export function PriorityIcon({ priority, size = 16 }: { priority: TaskPriority; size?: number }) {
-  const common = { ...base(size), strokeWidth: 1.8 };
-  if (priority === 'high')
-    return (
-      <svg {...common} className="prio prio-high">
-        <path d="M3.5 9.5L8 5l4.5 4.5M3.5 13L8 8.5 12.5 13" />
-      </svg>
-    );
-  if (priority === 'low')
-    return (
-      <svg {...common} className="prio prio-low">
-        <path d="M3.5 6.5L8 11l4.5-4.5M3.5 3L8 7.5 12.5 3" />
-      </svg>
-    );
-  return (
-    <svg {...common} className="prio prio-medium">
-      <path d="M3.5 6h9M3.5 10h9" />
-    </svg>
-  );
-}
+
+export const ChevronLeftIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2}>
+    <path d="M10 3.5L5.5 8l4.5 4.5" />
+  </svg>
+);
+
+export const ChevronRightIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} strokeWidth={2}>
+    <path d="M6 3.5L10.5 8 6 12.5" />
+  </svg>
+);
+
+export const ClockIcon = ({ size = 14 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M8 4.5V8l2.2 1.4" />
+  </svg>
+);
 
 export const GripIcon = ({ size = 16 }: P) => (
   <svg {...base(size)} strokeWidth={2.2}>
@@ -104,5 +101,58 @@ export const GripIcon = ({ size = 16 }: P) => (
 export const DotsIcon = ({ size = 16 }: P) => (
   <svg {...base(size)} strokeWidth={2.4}>
     <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" />
+  </svg>
+);
+
+export const PaperclipIcon = ({ size = 14 }: P) => (
+  <svg {...base(size)}>
+    <path d="M13 7.5l-5 5a3 3 0 01-4.2-4.2l5.4-5.4a2 2 0 112.8 2.8L6.7 11a1 1 0 01-1.4-1.4L10 5" />
+  </svg>
+);
+
+export const FileIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13" />
+  </svg>
+);
+
+export const PlayIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)} fill="currentColor">
+    <path d="M5 3l8 5-8 5z" />
+  </svg>
+);
+
+export const UploadIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M8 11V2.5M4.5 6L8 2.5 11.5 6M2.5 13.5h11" />
+  </svg>
+);
+
+export const UsersIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="6" cy="5.5" r="2.4" />
+    <path d="M1.8 13.2c.4-2.3 2.2-3.7 4.2-3.7s3.8 1.4 4.2 3.7" />
+    <circle cx="11.4" cy="6.2" r="1.9" />
+    <path d="M11.6 9.6c1.6.2 2.9 1.3 3.2 3.2" />
+  </svg>
+);
+
+export const ChevronDownIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <path d="M4 6.2 8 10l4-3.8" />
+  </svg>
+);
+
+export const UserIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <circle cx="8" cy="5.6" r="2.6" />
+    <path d="M3 13.4c.5-2.5 2.6-4 5-4s4.5 1.5 5 4" />
+  </svg>
+);
+
+export const MailIcon = ({ size = 16 }: P) => (
+  <svg {...base(size)}>
+    <rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.4" />
+    <path d="m2.4 4.4 5.6 4.4 5.6-4.4" />
   </svg>
 );

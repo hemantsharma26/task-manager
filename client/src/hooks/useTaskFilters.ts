@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PRIORITIES, type DueFilter, type ListFilters, type SortField } from '../api/types';
+import type { DueFilter, ListFilters, SortField } from '../api/types';
 
 const DUE: readonly DueFilter[] = ['overdue', 'today', 'week', 'none'];
 const SORTS: readonly SortField[] = ['createdAt', 'dueDate', 'priority', 'title', 'rank'];
-const FILTER_KEYS = ['status', 'priority', 'due', 'q', 'sort', 'order', 'page'];
+const FILTER_KEYS = ['status', 'priority', 'assignee', 'due', 'q', 'sort', 'order', 'page'];
 
 const pick = <T extends string>(allowed: readonly T[], value: string | null): T | undefined => allowed.find((a) => a === value);
 
@@ -20,7 +20,9 @@ export function useTaskFilters() {
     () => ({
       // A column key. Whether it still exists is the server's call (an unknown one just matches nothing).
       status: params.get('status')?.slice(0, 40) || undefined,
-      priority: pick(PRIORITIES, params.get('priority')),
+      priority: params.get('priority')?.slice(0, 40) || undefined,
+      // "me", "unassigned" or one person's id; anything else in the URL is ignored.
+      assignee: /^(me|unassigned|[0-9a-f]{24})$/.test(params.get('assignee') ?? '') ? (params.get('assignee') as string) : undefined,
       due: pick(DUE, params.get('due')),
       q: (params.get('q') ?? '').slice(0, 100),
       sort: pick(SORTS, params.get('sort')) ?? 'createdAt',
@@ -60,7 +62,7 @@ export function useTaskFilters() {
     [setParams],
   );
 
-  const isFiltered = !!(filters.status || filters.priority || filters.due || filters.q);
+  const isFiltered = !!(filters.status || filters.priority || filters.assignee || filters.due || filters.q);
   return { filters, update, reset, isFiltered };
 }
 

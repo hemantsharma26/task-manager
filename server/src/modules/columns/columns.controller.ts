@@ -12,25 +12,25 @@ async function sendList(userId: string, res: Response, status: number = HTTP_STA
   res.status(status).set(HEADER.X_CACHE, cacheStatus).json({ columns: value.map(toColumnDTO) });
 }
 
-export const list = (req: Request, res: Response) => sendList(req.userId!, res);
+export const list = (req: Request, res: Response) => sendList(req.workspaceId!, res);
 
 export async function create(req: Request, res: Response) {
-  await columns.createColumn(req.userId!, createColumnSchema.parse(req.body));
-  await sendList(req.userId!, res, HTTP_STATUS.CREATED);
+  await columns.createColumn(req.workspaceId!, createColumnSchema.parse(req.body));
+  await sendList(req.workspaceId!, res, HTTP_STATUS.CREATED);
 }
 
 export async function update(req: Request, res: Response) {
-  await columns.updateColumn(req.userId!, idOf(req), updateColumnSchema.parse(req.body));
-  await sendList(req.userId!, res);
+  await columns.updateColumn(req.workspaceId!, idOf(req), updateColumnSchema.parse(req.body));
+  await sendList(req.workspaceId!, res);
 }
 
 export async function move(req: Request, res: Response) {
-  await columns.moveColumn(req.userId!, idOf(req), moveColumnSchema.parse(req.body));
-  await sendList(req.userId!, res);
+  await columns.moveColumn(req.workspaceId!, idOf(req), moveColumnSchema.parse(req.body));
+  await sendList(req.workspaceId!, res);
 }
 
 export async function remove(req: Request, res: Response) {
   const { moveTo } = deleteColumnQuerySchema.parse(req.query);
-  await columns.deleteColumn(req.userId!, idOf(req), moveTo);
-  await sendList(req.userId!, res);
+  await columns.deleteColumn(req.workspaceId!, idOf(req), moveTo);
+  await sendList(req.workspaceId!, res);
 }

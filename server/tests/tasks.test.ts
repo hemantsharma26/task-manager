@@ -29,10 +29,17 @@ describe('task CRUD', () => {
 
   it('validates input', async () => {
     const { agent } = await signedInAgent();
-    const bad = await agent.post('/api/tasks').send({ title: '', priority: 'urgent', dueDate: '2026-02-31' });
+    const bad = await agent.post('/api/tasks').send({ title: '', dueDate: '2026-02-31' });
     expect(bad.status).toBe(400);
     const fields = bad.body.error.details.map((d: { field: string }) => d.field).sort();
-    expect(fields).toEqual(['dueDate', 'priority', 'title']);
+    expect(fields).toEqual(['dueDate', 'title']);
+  });
+
+  it('refuses a priority the user does not have', async () => {
+    const { agent } = await signedInAgent();
+    const res = await agent.post('/api/tasks').send({ title: 'x', priority: 'urgent' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/no priority "urgent"/);
   });
 
   it('updates fields and keeps completedAt in step with status', async () => {

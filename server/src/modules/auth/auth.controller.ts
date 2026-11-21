@@ -3,7 +3,8 @@ import { CACHE_CONTROL, HEADER, HTTP_STATUS, ROUTE_PARAM } from '../../constants
 import { HttpError } from '../../shared/errors/http-error.js';
 import { ERROR_MESSAGE } from '../../constants/index.js';
 import { toUserDTO } from './auth.mapper.js';
-import { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas.js';
+import { changePasswordSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from './auth.schemas.js';
+import * as passwordReset from './password-reset.service.js';
 import * as auth from './auth.service.js';
 import { clearAuthCookies, readAccessCookie, readRefreshCookie, setAuthCookies } from './cookies.js';
 import * as sessions from './session.service.js';
@@ -61,6 +62,25 @@ export async function logout(req: Request, res: Response) {
 export async function logoutAll(req: Request, res: Response) {
   await auth.signOutEverywhere(req.userId!, req.ip ?? '');
   clearAuthCookies(res);
+  res.status(HTTP_STATUS.NO_CONTENT).end();
+}
+
+/** Every device except this one. Their access tokens die at once, so this one is handed a fresh pair. */
+export async function logoutOthers(req: Request, res: Response) {
+  await auth.signOutOthers(req.userId!, req.sessionId!, req.ip ?? '');
+  setAuthCookies(res, await sessions.reissueTokens(req.sessionId!, clientOf(req)));
+  res.status(HTTP_STATUS.NO_CONTENT).end();
+}
+
+/** Same answer for every address, so it cannot be used to find out who has an account. */
+export async function forgotPassword(req: Request, res: Response) {
+  await passwordReset.requestPasswordReset(forgotPasswordSchema.parse(req.body).email, clientOf(req));
+  res.status(HTTP_STATUS.ACCEPTED).json({ ok: true });
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const { token, newPassword } = resetPasswordSchema.parse(req.body);
+  await passwordReset.resetPassword(token, newPassword, clientOf(req));
   res.status(HTTP_STATUS.NO_CONTENT).end();
 }
 

@@ -11,12 +11,14 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const { user } = useAuth();
   const location = useLocation();
   const signIn = useSignIn(mode);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  // Coming from an invitation link, the address it was sent to is already filled in.
+  const invitedEmail = (location.state as { email?: string } | null)?.email ?? '';
+  const [form, setForm] = useState({ name: '', email: invitedEmail, password: '' });
   const [localError, setLocalError] = useState('');
 
   // Switching between the two pages starts clean: no leftover errors, and never a leftover password.
   useEffect(() => {
-    setForm({ name: '', email: '', password: '' });
+    setForm({ name: '', email: invitedEmail, password: '' });
     setLocalError('');
     signIn.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,6 +104,12 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           showRules={isRegister}
           error={error?.fieldMessage('password')}
         />
+
+        {!isRegister && (
+          <p className="forgot-link">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
+        )}
 
         <button type="submit" className="btn btn-primary btn-block" disabled={signIn.isPending}>
           {signIn.isPending ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}

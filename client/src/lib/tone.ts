@@ -1,3 +1,5 @@
+import { mix } from './color';
+
 // Colours for a column and for the status lozenges that name it. The three classic columns keep their familiar
 // colours; every column the user adds gets a stable colour picked from its key, so it looks the same everywhere.
 export interface Tone {
@@ -28,7 +30,12 @@ const PALETTE: Tone[] = [
   { bg: '#cfe1fd', fg: '#1558bc', accent: '#388bff' },
 ];
 
-export function toneFor(key: string, isDone: boolean): Tone {
+/** A tone derived from one chosen colour: a pale tint for the background, a deep shade for the text. */
+export const toneFromColor = (hex: string): Tone => ({ bg: mix(hex, '#ffffff', 0.84), fg: mix(hex, '#000000', 0.42), accent: hex });
+
+export function toneFor(key: string, isDone: boolean, color?: string | null): Tone {
+  // A colour the user picked always wins over the built-in look.
+  if (color) return toneFromColor(color);
   const known = KNOWN[key];
   if (known) return known;
   if (isDone) return { ...DONE, accent: '#4bce97' };

@@ -15,7 +15,7 @@ export function ListPage() {
     <>
       <PageHeader title="List" />
       <FilterBar filters={filters} onChange={update} onReset={reset} isFiltered={isFiltered} showStatus />
-      <ListView filters={filters} owner={user.name} isFiltered={isFiltered} onChange={update} onReset={reset} onOpen={openIssue} />
+      <ListView filters={filters} isFiltered={isFiltered} onChange={update} onReset={reset} onOpen={openIssue} />
     </>
   );
 }

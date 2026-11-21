@@ -10,6 +10,7 @@ export const CACHE_NAMESPACE = {
   TASK_LIST: 'tasks:list',
   TASK_STATS: 'tasks:stats',
   COLUMNS: 'columns',
+  PRIORITIES: 'priorities',
   AUTH: 'auth',
 } as const;
 
@@ -27,6 +28,7 @@ export const CACHE_TTL_SECONDS = {
   TASK_LIST: 60,
   TASK_STATS: 60,
   COLUMNS: 300,
+  PRIORITIES: 300,
 } as const;
 
 export const REDIS = {
