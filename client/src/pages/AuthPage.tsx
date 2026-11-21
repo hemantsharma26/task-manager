@@ -105,6 +105,12 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           error={error?.fieldMessage('password')}
         />
 
+        {!isRegister && (
+          <p className="forgot-link">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
+        )}
+
         <button type="submit" className="btn btn-primary btn-block" disabled={signIn.isPending}>
           {signIn.isPending ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
         </button>

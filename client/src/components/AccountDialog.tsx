@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useChangePassword, useRevokeSession, useSessions, useSignOutEverywhere, type DeviceSession } from '../api/auth';
+import { useChangePassword, useRevokeSession, useSessions, useSignOut, useSignOutEverywhere, useSignOutOthers, type DeviceSession } from '../api/auth';
 import { ApiError } from '../api/http';
-import { meetsPasswordRules } from '../lib/password';
+import { passwordChangeProblems } from '../lib/password';
 import { CloseIcon } from './Icons';
 import { PasswordField } from './PasswordField';
 import { useToast } from './Toast';
@@ -19,12 +19,19 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
   const ref = useRef<HTMLDialogElement>(null);
   const { notify } = useToast();
   const change = useChangePassword();
+  const signOut = useSignOut();
   const everywhere = useSignOutEverywhere();
+  const others = useSignOutOthers();
   const revoke = useRevokeSession();
   const sessions = useSessions(open);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [touched, setTouched] = useState({ current: false, next: false, confirm: false });
   const [error, setError] = useState('');
+
+  const problems = passwordChangeProblems({ current, next, confirm });
+  const otherDevices = (sessions.data ?? []).filter((s) => !s.current).length;
 
   useEffect(() => {
     const el = ref.current;
@@ -32,6 +39,8 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
     if (open && !el.open) {
       setCurrent('');
       setNext('');
+      setConfirm('');
+      setTouched({ current: false, next: false, confirm: false });
       setError('');
       change.reset();
       el.showModal();
@@ -42,8 +51,9 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    setTouched({ current: true, next: true, confirm: true });
     setError('');
-    if (!meetsPasswordRules(next)) return setError('The new password does not meet the rules yet.');
+    if (!problems.valid) return;
     change.mutate(
       { currentPassword: current, newPassword: next },
       {
@@ -51,11 +61,15 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
           notify('success', 'Password changed. Your other devices were signed out.');
           setCurrent('');
           setNext('');
+          setConfirm('');
+          setTouched({ current: false, next: false, confirm: false });
         },
         onError: (err) => setError(err instanceof ApiError ? (err.fields[0]?.message ?? err.message) : 'Could not change the password'),
       },
     );
   }
+
+  const touch = (field: keyof typeof touched) => setTouched((t) => ({ ...t, [field]: true }));
 
   return (
     <dialog ref={ref} className="dialog dialog-sm" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
@@ -74,11 +88,22 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
               {error}
             </p>
           )}
-          <PasswordField label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
-          <PasswordField label="New password" value={next} onChange={setNext} autoComplete="new-password" showRules />
-          <button type="submit" className="btn btn-primary" disabled={change.isPending || !current || !next}>
+          <div onBlur={() => touch('current')}>
+            <PasswordField label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
+            {touched.current && problems.current && <small className="field-error">{problems.current}</small>}
+          </div>
+          <div onBlur={() => touch('next')}>
+            <PasswordField label="New password" value={next} onChange={setNext} autoComplete="new-password" showRules />
+            {touched.next && problems.next && <small className="field-error">{problems.next}</small>}
+          </div>
+          <div onBlur={() => touch('confirm')}>
+            <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+            {(touched.confirm || (confirm && confirm.length >= next.length)) && problems.confirm && <small className="field-error">{problems.confirm}</small>}
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={change.isPending || !problems.valid}>
             {change.isPending ? 'Changing…' : 'Change password'}
           </button>
+          <small className="muted">Changing it signs out all your other devices.</small>
         </form>
 
         <section className="stack">
@@ -102,10 +127,24 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-danger" disabled={everywhere.isPending} onClick={() => everywhere.mutate()}>
-            {everywhere.isPending ? 'Signing out…' : 'Sign out of all devices'}
-          </button>
-          <small className="muted">This signs you out here too. Use it if you lost a device or think someone else has your password.</small>
+
+          <div className="signout-options">
+            <button type="button" className="btn" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
+              {signOut.isPending ? 'Signing out…' : 'Sign out of this device'}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={others.isPending || otherDevices === 0}
+              onClick={() => others.mutate(undefined, { onSuccess: () => notify('success', 'All your other devices were signed out'), onError: (e) => notify('error', e.message) })}
+            >
+              {others.isPending ? 'Signing out…' : `Sign out of other devices${otherDevices ? ` (${otherDevices})` : ''}`}
+            </button>
+            <button type="button" className="btn btn-danger" disabled={everywhere.isPending} onClick={() => everywhere.mutate()}>
+              {everywhere.isPending ? 'Signing out…' : 'Sign out of all devices'}
+            </button>
+          </div>
+          <small className="muted">“All devices” signs you out here too. Use it if you lost a device or think someone else has your password.</small>
         </section>
       </div>
     </dialog>

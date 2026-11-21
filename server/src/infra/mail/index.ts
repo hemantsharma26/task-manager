@@ -3,7 +3,7 @@ import { MAIL, MAIL_LOG } from '../../constants/index.js';
 import { logger } from '../logger.js';
 import { createMailer, type Mailer, type OutgoingMail } from './mailer.js';
 
-export { assignmentMail, invitationMail, escapeHtml } from './templates.js';
+export { assignmentMail, invitationMail, passwordResetMail, escapeHtml } from './templates.js';
 export { SmtpMailer, LogOnlyMailer, type Mailer, type OutgoingMail } from './mailer.js';
 
 let mailer: Mailer = createMailer(env.SMTP_URL);

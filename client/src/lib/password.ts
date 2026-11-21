@@ -34,3 +34,22 @@ export function passwordStrength(password: string): 0 | 1 | 2 | 3 | 4 {
 }
 
 export const STRENGTH_LABEL = ['', 'Too weak', 'Getting there', 'Good', 'Strong'] as const;
+
+export interface PasswordChangeProblems {
+  current?: string;
+  next?: string;
+  confirm?: string;
+}
+
+/**
+ * What is wrong with a "change password" form, field by field. Nothing is reported for a field the person has not touched yet,
+ * but `valid` is only true when every field is right, which is what turns the button on.
+ */
+export function passwordChangeProblems(form: { current?: string; next: string; confirm: string }): PasswordChangeProblems & { valid: boolean } {
+  const problems: PasswordChangeProblems = {};
+  if (form.current !== undefined && !form.current) problems.current = 'Enter your current password';
+  if (!meetsPasswordRules(form.next)) problems.next = 'The new password does not meet the rules yet';
+  else if (form.current !== undefined && form.next === form.current) problems.next = 'The new password must be different from the current one';
+  if (form.confirm !== form.next) problems.confirm = form.confirm ? 'The two passwords do not match' : 'Type the new password again to confirm it';
+  return { ...problems, valid: Object.keys(problems).length === 0 };
+}

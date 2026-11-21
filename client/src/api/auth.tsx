@@ -109,3 +109,18 @@ export function useRevokeSession() {
     onSuccess: () => qc.invalidateQueries({ queryKey: SESSIONS_KEY }),
   });
 }
+
+/** Every device except this one. This one stays signed in. */
+export function useSignOutOthers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => http<void>('/auth/logout-others', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SESSIONS_KEY }),
+  });
+}
+
+/** "Forgot password": always succeeds from the caller's side, whether or not the address has an account. */
+export const useForgotPassword = () => useMutation({ mutationFn: (email: string) => http<{ ok: true }>('/auth/forgot-password', { method: 'POST', body: { email } }) });
+
+export const useResetPassword = () =>
+  useMutation({ mutationFn: (v: { token: string; newPassword: string }) => http<void>('/auth/reset-password', { method: 'POST', body: v }) });

@@ -47,3 +47,17 @@ export function assignmentMail(input: { to: string; assignerName: string; taskKe
     text: `${assigner} assigned you ${input.taskKey} "${title}" in ${input.projectName}.${input.dueText ? `\nDue: ${input.dueText}` : ''}\n\nOpen: ${input.url}`,
   };
 }
+
+export function passwordResetMail(input: { to: string; name: string; url: string; expiresInMinutes: number }): OutgoingMail {
+  const name = oneLine(input.name);
+  return {
+    to: input.to,
+    subject: 'Reset your Task Manager password',
+    html: layout(
+      'Reset your password',
+      `Hi <strong>${escapeHtml(name)}</strong>, we got a request to reset the password of your account.<br>The link works once and for ${input.expiresInMinutes} minutes.<br><br>If it was not you, ignore this email: your password stays as it is.`,
+      { label: 'Choose a new password', url: input.url },
+    ),
+    text: `Hi ${name},\n\nWe got a request to reset your Task Manager password.\n\nChoose a new one: ${input.url}\n\nThe link works once and for ${input.expiresInMinutes} minutes. If it was not you, ignore this email: your password stays as it is.`,
+  };
+}

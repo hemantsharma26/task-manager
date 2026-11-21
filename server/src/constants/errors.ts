@@ -21,6 +21,7 @@ export const ERROR_MESSAGE = {
   MALFORMED_TOKEN: 'Malformed token',
   ACCESS_TOKEN_EXPIRED: 'Your session needs refreshing',
   REFRESH_INVALID: 'Session expired, please sign in again',
+  RESET_LINK_INVALID: 'This reset link is no longer valid. Request a new one.',
   CURRENT_PASSWORD_WRONG: 'Your current password is not correct',
   SESSION_NOT_FOUND: 'Session not found',
   LOCKED_OUT: 'Too many failed sign-in attempts. Try again later.',

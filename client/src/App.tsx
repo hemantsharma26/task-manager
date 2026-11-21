@@ -5,7 +5,9 @@ import { useAuth } from './api/auth';
 import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { BoardPage } from './pages/BoardPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { JoinPage } from './pages/JoinPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { loadListPage } from './pages/lazy';
 
 // The list view is the less-used screen, so it is split out of the first download.
@@ -36,6 +38,8 @@ export function App() {
     <Routes>
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/register" element={<AuthPage mode="register" />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       <Route path="/join/:token" element={<JoinPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>

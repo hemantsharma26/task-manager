@@ -11,6 +11,7 @@ export const MAIL_TRANSPORT = { SMTP: 'smtp', LOG_ONLY: 'log-only' } as const;
 export const MAIL_TEMPLATE = {
   INVITATION: 'invitation',
   ASSIGNMENT: 'assignment',
+  PASSWORD_RESET: 'password-reset',
 } as const;
 
 export const MAIL_LOG = {

@@ -2560,3 +2560,20 @@ a.btn {
   text-decoration: none;
   text-align: center;
 }
+
+.forgot-link {
+  margin: -4px 0 14px;
+  text-align: right;
+  font-size: 13px;
+}
+.signout-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* A form inside the auth card keeps the card's spacing */
+.auth-card > form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

@@ -30,7 +30,15 @@ validation, ownership checks, ordering that survives drag and drop, caching, dat
 - Register and sign in with a password policy, a live strength checklist and show/hide
 - Short-lived access token plus a **rotating refresh token** with theft detection; the browser renews quietly
 - Brute-force lockout per account and address, rate limits per IP and per user
-- Change password, see where you are signed in, sign out one device or **all devices**
+- **Change password** with current, new and confirm fields (the button stays off until all three are valid), and **Forgot password** on the sign-in page: a one-time link by email (30 minutes, newest link only), the same answer whether or not the address has an account
+- **Sign out** of this device, of one other device, of all other devices, or of every device
+
+**Teams and assignment**
+
+- **Invite people by email:** a private link (7 days, single use, only works for the invited address). Anyone who accepts joins your board as Admin, Editor or Viewer
+- **Assign a task to several people at once** from a searchable picker; only people who accepted an invitation appear in it. They get an email, never the person who assigned and never twice
+- **Roles are enforced on the server** for tasks, columns, priorities and files; the UI hides what a role cannot do. A board switcher moves between your own board and boards you were invited to
+- Filters for "assigned to me", "unassigned" and one person; removing a member takes them off every task
 
 ## Quick start
 
@@ -119,10 +127,18 @@ All routes are under `/api`. Errors always have one shape:
 | POST   | `/auth/refresh`           | Swap the refresh cookie for a new token pair                       |
 | POST   | `/auth/logout`            | End this session                                                   |
 | POST   | `/auth/logout-all`        | End every session of this user                                     |
+| POST   | `/auth/logout-others`     | End every session except this one                                  |
+| POST   | `/auth/forgot-password`   | Email a reset link (always answers 202, whatever the address)      |
+| POST   | `/auth/reset-password`    | `{ token, newPassword }`: set a new password from the link, sign out everywhere |
 | GET    | `/auth/me`                | Current user                                                       |
 | POST   | `/auth/password`          | Change password (needs the current one); signs out other devices   |
 | GET    | `/auth/sessions`          | Devices this user is signed in on                                  |
 | DELETE | `/auth/sessions/:id`      | Sign one device out                                                |
+| GET    | `/workspaces`             | The boards you can open (yours, and ones you were invited to)      |
+| GET    | `/team/members`           | People on the board (send `X-Workspace-Id` for a shared board)     |
+| POST   | `/team/invitations`       | Invite `{ email, role }` (owner / admin)                           |
+| GET    | `/invitations/:token`     | What an invitation link is for (no sign-in needed)                 |
+| POST   | `/invitations/:token/accept` | Join, if signed in as the invited address                       |
 | GET    | `/columns`                | The board's columns, in order                                      |
 | POST   | `/columns`                | Add a column `{ name, isDone, color }`                             |
 | PATCH  | `/columns/:id`            | Rename, recolour, or change "counts as done"                       |
@@ -270,12 +286,12 @@ account without any gets the five defaults the first time it is used, with the s
 
 ## Left out on purpose
 
-1. **Sharing and collaboration** (shared boards, assignees, comments). It turns "a task has one owner" into a permissions model, and
-   every query, test and screen with it. That is a feature of its own.
+1. **Comments and live updates** (Socket.IO). Sharing and assignment are built, but real-time collaboration needs a socket layer with
+   its own authentication, per-board rooms and a story for reconnects, which is a feature of its own.
 2. **Reminders and notifications** (email or push when something is due). It needs a mail provider, a background job runner and
    delivery tracking: a lot of moving parts for something that does not show in a short review of the core flow.
-3. **Email verification and password reset.** Both need transactional email and single-use expiring tokens, and I did not want to ship a
-   half-working version. It also means sign-up still says "this email is taken", which reveals that an address is registered; the
+3. **Email verification at sign-up.** Password reset already sends one-time links, but verifying an address before the account works also needs a
+   "not verified yet" state in every screen. It also means sign-up still says "this email is taken", which reveals that an address is registered; the
    per-IP caps limit how fast that can be used, but only verification by email would really close it.
 
 ## Known limitation

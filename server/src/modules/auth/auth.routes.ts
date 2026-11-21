@@ -13,8 +13,11 @@ authRouter.post(ROUTE.AUTH.REGISTER, authRateLimit, controller.register);
 authRouter.post(ROUTE.AUTH.LOGIN, authRateLimit, controller.login);
 authRouter.post(ROUTE.AUTH.REFRESH, authRateLimit, controller.refresh);
 authRouter.post(ROUTE.AUTH.LOGOUT, controller.logout);
+authRouter.post(ROUTE.AUTH.FORGOT_PASSWORD, authRateLimit, controller.forgotPassword);
+authRouter.post(ROUTE.AUTH.RESET_PASSWORD, authRateLimit, controller.resetPassword);
 
 authRouter.post(ROUTE.AUTH.LOGOUT_ALL, requireAuth, controller.logoutAll);
+authRouter.post(ROUTE.AUTH.LOGOUT_OTHERS, requireAuth, controller.logoutOthers);
 authRouter.get(ROUTE.AUTH.ME, requireAuth, controller.me);
 authRouter.post(ROUTE.AUTH.PASSWORD, requireAuth, authRateLimit, controller.changePassword);
 authRouter.get(ROUTE.AUTH.SESSIONS, requireAuth, controller.listSessions);

@@ -294,6 +294,8 @@ describe('assigning tasks', () => {
     expect((await owner.agent.patch(`/api/tasks/${id}`).send({ assignees: [owner.user.id] })).body.task.assignees).toHaveLength(1);
     // editing something else leaves the assignees alone
     expect((await owner.agent.patch(`/api/tasks/${id}`).send({ title: 'Renamed' })).body.task.assignees).toHaveLength(1);
+    expect((await owner.agent.patch(`/api/tasks/${id}`).send({ description: '<p>New note</p>', color: '#c9372c', priority: 'high' })).body.task.assignees).toHaveLength(1);
+    expect((await owner.agent.post(`/api/tasks/${id}/move`).send({ status: 'done' })).body.task.assignees).toHaveLength(1);
   });
 
   it('filters by "assigned to me", "unassigned" and one person, and never leaks one viewer’s "me" to another', async () => {
