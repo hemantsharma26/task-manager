@@ -2,7 +2,7 @@ import { isValidObjectId, Types } from 'mongoose';
 import { RANK_STEP, SORT, SORT_DIRECTION, TASK_FIELD } from '../../constants/index.js';
 import { nextIssueNumber } from './counter.model.js';
 import { Task, type TaskDoc, type TaskStatus } from './task.model.js';
-import { computedSortPipeline, usesIndexedSort } from './tasks.filters.js';
+import { computedSortPipeline, overdueCondition, usesIndexedSort } from './tasks.filters.js';
 import type { TaskLike } from './tasks.mapper.js';
 import type { ListQuery } from './tasks.schemas.js';
 
@@ -13,22 +13,22 @@ const asObjectId = (id: string) => new Types.ObjectId(id);
 export const taskRepository = {
   nextIssueNumber,
 
-  findPage(filter: Filter, query: Pick<ListQuery, 'sort' | 'order' | 'page' | 'limit'>): Promise<TaskLike[]> {
+  findPage(filter: Filter, query: Pick<ListQuery, 'sort' | 'order' | 'page' | 'limit'>, priorityOrder: string[] = []): Promise<TaskLike[]> {
     const dir = query.order === 'asc' ? SORT_DIRECTION.ASC : SORT_DIRECTION.DESC;
     const skip = (query.page - 1) * query.limit;
     // Sorts that match an index go straight through find(): no computed fields, no in-memory sort.
     if (usesIndexedSort(query.sort)) {
       return Task.find(filter).sort({ [query.sort]: dir, _id: dir }).skip(skip).limit(query.limit).lean<TaskLike[]>();
     }
-    return Task.aggregate<TaskLike>(computedSortPipeline(filter, query.sort, dir, skip, query.limit));
+    return Task.aggregate<TaskLike>(computedSortPipeline(filter, query.sort, dir, skip, query.limit, priorityOrder));
   },
 
   count: (filter: Filter) => Task.countDocuments(filter),
 
   groupByStatus: (ownerId: string) => Task.aggregate<{ _id: string; n: number }>([{ $match: { owner: asObjectId(ownerId) } }, { $group: { _id: `$${TASK_FIELD.STATUS}`, n: { $sum: 1 } } }]),
 
-  countOverdue: (ownerId: string, doneKeys: string[], today: string) =>
-    Task.countDocuments({ owner: asObjectId(ownerId), status: { $nin: doneKeys }, dueDate: { $lt: today } }),
+  countOverdue: (ownerId: string, doneKeys: string[], today: string, nowTime?: string) =>
+    Task.countDocuments({ owner: asObjectId(ownerId), status: { $nin: doneKeys }, ...overdueCondition(today, nowTime) }),
 
   // A malformed id and a missing task look identical to the caller, so ids cannot be probed.
   async findOwned(ownerId: string, id: string): Promise<TaskDoc | null> {
@@ -69,6 +69,13 @@ export const taskRepository = {
     if (!rows.length) return;
     await Task.bulkWrite(rows.map((r, i) => ({ updateOne: { filter: { _id: r._id }, update: { $set: { rank: (i + 1) * RANK_STEP } } } })));
   },
+
+  /** Takes a person off every task of a board (when they are removed from its team). */
+  unassign: (ownerId: string, userId: string) => Task.updateMany({ owner: ownerId, assignees: userId }, { $pull: { assignees: asObjectId(userId) } }),
+
+  // ----- used when a priority is deleted (priorities module)
+  countWithPriority: (ownerId: string, priority: string) => Task.countDocuments({ owner: ownerId, priority }),
+  reassignPriority: (ownerId: string, from: string, to: string) => Task.updateMany({ owner: ownerId, priority: from }, { $set: { priority: to } }),
 
   // ----- used when a whole column is changed or removed (columns module)
   countInColumn: (ownerId: string, status: TaskStatus) => Task.countDocuments({ owner: ownerId, status }),

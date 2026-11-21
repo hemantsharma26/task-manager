@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/http';
 import { useColumns } from '../api/columns';
-import { PRIORITIES, PRIORITY_LABEL, type TaskInput } from '../api/types';
+import { useAuth } from '../api/auth';
+import { usePriorities } from '../api/priorities';
+import { useMembers } from '../api/team';
+import { useWorkspace } from '../api/workspace';
+import type { TaskInput } from '../api/types';
+import { AssigneePicker } from './AssigneePicker';
+import { ColorPicker } from './ColorPicker';
+import { DateTimeField } from './DateTimeField';
+import { FilePicker } from './FilePicker';
+import { NoteEditor } from './NoteEditor';
 import { CloseIcon } from './Icons';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: TaskInput) => Promise<unknown>;
+  /** Called with the new task's fields and the files chosen to go with it. */
+  onSubmit: (input: TaskInput, files: File[]) => Promise<unknown>;
 }
 
-const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null };
+const EMPTY: TaskInput = { title: '', description: '', status: 'todo', priority: 'medium', dueDate: null, dueTime: null, startTime: null, color: null, assignees: [] };
 
 type Errors = Partial<Record<keyof TaskInput | 'form', string>>;
 
@@ -19,16 +29,21 @@ function validate(v: TaskInput): Errors {
   const title = v.title.trim();
   if (!title) errors.title = 'Give the task a title';
   else if (title.length > 120) errors.title = 'Keep the title under 120 characters';
-  if (v.description.length > 2000) errors.description = 'Keep the description under 2000 characters';
+  if (v.description.replace(/<[^>]*>/g, '').length > 5000) errors.description = 'Keep the notes under 5000 characters';
   return errors;
 }
 
 export function CreateDialog({ open, onClose, onSubmit }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const { data: columns = [] } = useColumns();
+  const { data: priorities = [] } = usePriorities();
+  const { user } = useAuth();
+  const { can } = useWorkspace();
+  const members = useMembers().data?.members ?? [];
   const [values, setValues] = useState<TaskInput>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   // Native <dialog>: focus trapping, Escape-to-close and the backdrop come for free.
   useEffect(() => {
@@ -36,9 +51,12 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
     if (!el) return;
     if (open && !el.open) {
       // New tasks start in the first column of the board.
-      setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo' });
+      // New tasks start in the first column, with Medium (or the middle priority if Medium was deleted).
+      const middle = priorities.find((p) => p.key === 'medium') ?? priorities[Math.floor(priorities.length / 2)];
+      setValues({ ...EMPTY, status: columns[0]?.key ?? 'todo', priority: middle?.key ?? 'medium' });
       setErrors({});
       setSaving(false);
+      setFiles([]);
       el.showModal();
     }
     if (!open && el.open) el.close();
@@ -56,7 +74,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
 
     setSaving(true);
     try {
-      await onSubmit({ ...values, title: values.title.trim(), description: values.description.trim() });
+      await onSubmit({ ...values, title: values.title.trim() }, files);
       onClose();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -104,21 +122,39 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
           )}
         </label>
 
-        <label className="field">
+        <div className="field">
           <span>
-            Description <span className="muted">(optional)</span>
+            Notes <span className="muted">(optional)</span>
           </span>
-          <textarea rows={4} value={values.description} onChange={(e) => set('description', e.target.value)} aria-invalid={!!errors.description} />
+          <NoteEditor label="Notes" value={values.description} onChange={(html) => set('description', html)} minHeight={120} />
           {errors.description && <small className="field-error">{errors.description}</small>}
-        </label>
+        </div>
+
+        <FilePicker files={files} onChange={setFiles} />
+
+        <div className="field">
+          <span>
+            Card colour <span className="muted">(optional)</span>
+          </span>
+          <ColorPicker label="Card colour" value={values.color} allowDefault onChange={(color) => set('color', color)} />
+        </div>
+
+        {can('task.assign') && (
+          <div className="field">
+            <span>
+              Assignees <span className="muted">(optional)</span>
+            </span>
+            <AssigneePicker members={members} value={values.assignees} meId={user?.id} onChange={(ids) => set('assignees', ids)} />
+          </div>
+        )}
 
         <div className="field-row">
           <label className="field">
             <span>Priority</span>
-            <select value={values.priority} onChange={(e) => set('priority', e.target.value as TaskInput['priority'])}>
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {PRIORITY_LABEL[p]}
+            <select value={values.priority} onChange={(e) => set('priority', e.target.value)}>
+              {priorities.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -135,11 +171,11 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
             </select>
           </label>
 
-          <label className="field">
+          <div className="field">
             <span>Due date</span>
-            <input type="date" value={values.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value || null)} aria-invalid={!!errors.dueDate} />
+            <DateTimeField label="Due date" value={{ date: values.dueDate, startTime: values.startTime, time: values.dueTime }} align="right" onChange={(v) => setValues((cur) => ({ ...cur, dueDate: v.date, startTime: v.startTime, dueTime: v.time }))} />
             {errors.dueDate && <small className="field-error">{errors.dueDate}</small>}
-          </label>
+          </div>
         </div>
 
         <div className="dialog-actions">
@@ -147,7 +183,7 @@ export function CreateDialog({ open, onClose, onSubmit }: Props) {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Creating…' : 'Create'}
+            {saving ? (files.length ? 'Creating and uploading…' : 'Creating…') : 'Create'}
           </button>
         </div>
       </form>

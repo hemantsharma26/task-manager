@@ -11,6 +11,7 @@ import {
   DEFAULTS,
   LOG_LEVEL,
   LOG_MESSAGE,
+  MAIL,
   NODE_ENV,
   SERVER,
   VALIDATION_MESSAGE,
@@ -70,6 +71,18 @@ const schema = z.object({
   CACHE_TTL_TASK_LIST_SECONDS: positiveInt(CACHE_TTL_SECONDS.TASK_LIST),
   CACHE_TTL_TASK_STATS_SECONDS: positiveInt(CACHE_TTL_SECONDS.TASK_STATS),
   CACHE_TTL_COLUMNS_SECONDS: positiveInt(CACHE_TTL_SECONDS.COLUMNS),
+  CACHE_TTL_PRIORITIES_SECONDS: positiveInt(CACHE_TTL_SECONDS.PRIORITIES),
+
+  // --- email (invitations and assignment notices)
+  // smtp://user:pass@host:587  or  smtps://user:pass@host:465. Leave it out in development: emails are then only logged.
+  SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().default(MAIL.DEFAULT_FROM),
+  // The address people use to reach the web app, used for the links inside emails.
+  APP_URL: z.string().optional(),
+
+  // --- uploads
+  // Where attached files (images, videos, PDFs) are kept. Relative paths are relative to the server folder.
+  UPLOAD_DIR: z.string().default('uploads'),
 
   // --- rate limiting
   // Off only in the automated tests, which sign in hundreds of times from one address.
@@ -102,6 +115,11 @@ if (env.NODE_ENV === NODE_ENV.PRODUCTION) {
     }
   }
 }
+/** Where links in emails point: APP_URL, or the dev web app. */
+export const appUrl = (env.APP_URL ?? env.CLIENT_ORIGIN).replace(/\/+$/, '');
+
+/** Absolute path of the folder uploaded files live in. */
+export const uploadDir = path.resolve(SERVER_DIR, env.UPLOAD_DIR);
 export const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
 export const hstsEnabled = env.HSTS_ENABLED === BOOLEAN_ENV.TRUE;
 export const isProd = env.NODE_ENV === NODE_ENV.PRODUCTION;

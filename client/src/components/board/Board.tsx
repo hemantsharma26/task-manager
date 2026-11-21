@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useColumnLookup } from '../../api/columns';
+import { useWorkspace } from '../../api/workspace';
 import { readColumnItems, useColumn, useMoveTask, useStats } from '../../api/tasks';
 import type { Column as ColumnModel, CommonFilters, Task } from '../../api/types';
 import { todayLocal } from '../../lib/dates';
@@ -36,11 +37,11 @@ function containerOf(columns: Columns, id: string | number): string | undefined 
 
 interface Props {
   filters: CommonFilters;
-  owner: string;
   onOpen: (id: string) => void;
 }
 
-export function Board({ filters, owner, onOpen }: Props) {
+export function Board({ filters, onOpen }: Props) {
+  const { can } = useWorkspace();
   const today = todayLocal();
   const qc = useQueryClient();
   const { notify } = useToast();
@@ -178,7 +179,8 @@ export function Board({ filters, owner, onOpen }: Props) {
 
   return (
     <DndContext
-      sensors={sensors}
+      // With no sensors nothing can be picked up, which is how read-only people get a board that cannot be dragged.
+      sensors={can('task.edit') ? sensors : []}
       collisionDetection={closestCorners}
       // Dragging near the edge of the board scrolls it sideways, which matters with many columns.
       autoScroll={{ threshold: { x: 0.12, y: 0.15 }, acceleration: 14 }}
@@ -208,7 +210,6 @@ export function Board({ filters, owner, onOpen }: Props) {
             editable={loaded}
             filters={filters}
             today={today}
-            owner={owner}
             draftItems={draft?.[column.key]}
             draftBase={fromServer.current[column.key]?.length ?? 0}
             onOpen={onOpen}
@@ -218,7 +219,7 @@ export function Board({ filters, owner, onOpen }: Props) {
             }}
           />
         ))}
-        <AddColumn count={columns.length} disabled={!loaded} onAdded={scrollToEnd} />
+        {can('board.manage') && <AddColumn count={columns.length} disabled={!loaded} onAdded={scrollToEnd} />}
       </div>
 
       <DeleteColumnDialog column={deleting} taskCount={deletingCount} others={others} onClose={() => setDeleting(null)} />
@@ -227,7 +228,7 @@ export function Board({ filters, owner, onOpen }: Props) {
       <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)', sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
         {activeTask && (
           <div className="card card-overlay">
-            <CardBody task={activeTask} today={today} owner={owner} />
+            <CardBody task={activeTask} today={today} />
           </div>
         )}
       </DragOverlay>
@@ -242,7 +243,6 @@ interface ContainerProps {
   editable: boolean;
   filters: CommonFilters;
   today: string;
-  owner: string;
   draftItems: Task[] | undefined;
   /** How many cards this column had when the drag began, to keep its total right while the draft is shown. */
   draftBase: number;
@@ -251,7 +251,7 @@ interface ContainerProps {
 }
 
 /** One column that loads its own cards. Each column is its own query, so any number of them can exist. */
-function ColumnContainer({ column, index, columns, editable, filters, today, owner, draftItems, draftBase, onOpen, onDelete }: ContainerProps) {
+function ColumnContainer({ column, index, columns, editable, filters, today, draftItems, draftBase, onOpen, onDelete }: ContainerProps) {
   const q = useColumn(column.key, filters);
 
   // Cards ease in (staggered) only while this column first loads. Refetches and drops never replay it.
@@ -277,7 +277,6 @@ function ColumnContainer({ column, index, columns, editable, filters, today, own
       hasMore={!!q.hasNextPage}
       loadingMore={q.isFetchingNextPage}
       today={today}
-      owner={owner}
       staggerIn={firstLoad}
       onOpen={onOpen}
       onLoadMore={() => void q.fetchNextPage()}

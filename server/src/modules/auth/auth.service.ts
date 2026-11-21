@@ -84,6 +84,12 @@ export async function changePassword(userId: string, sessionId: string, input: C
   return user;
 }
 
+/** Signs out every device except the one asking. */
+export async function signOutOthers(userId: string, sessionId: string, ip: string) {
+  await endAllSessions(userId, SESSION_REVOKE_REASON.LOGOUT_OTHERS, sessionId);
+  securityInfo(SECURITY_EVENT.LOGOUT_OTHERS, { userId, ip });
+}
+
 export async function signOutEverywhere(userId: string, ip: string) {
   await endAllSessions(userId, SESSION_REVOKE_REASON.LOGOUT_ALL);
   securityInfo(SECURITY_EVENT.LOGOUT_ALL, { userId, ip });

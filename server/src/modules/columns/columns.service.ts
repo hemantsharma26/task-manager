@@ -51,7 +51,7 @@ export async function createColumn(ownerId: string, input: CreateColumnInput) {
   for (let n = 2; taken.has(key); n++) key = `${base}_${n}`;
 
   const last = columns[columns.length - 1];
-  await columnRepository.create({ owner: ownerId, key, name: input.name, isDone: input.isDone, position: (last?.position ?? 0) + RANK_STEP });
+  await columnRepository.create({ owner: ownerId, key, name: input.name, isDone: input.isDone, color: input.color, position: (last?.position ?? 0) + RANK_STEP });
   await cache.invalidateUser(ownerId);
 }
 
@@ -69,6 +69,8 @@ export async function updateColumn(ownerId: string, id: string, input: UpdateCol
     if (others.some((c) => sameName(c.name, input.name!))) throw HttpError.conflict(ERROR_MESSAGE.COLUMN_NAME_TAKEN(input.name));
     col.name = input.name;
   }
+
+  if (input.color !== undefined) col.color = input.color;
 
   const doneChanged = input.isDone !== undefined && input.isDone !== col.isDone;
   if (input.isDone !== undefined) col.isDone = input.isDone;

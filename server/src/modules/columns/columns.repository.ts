@@ -15,7 +15,7 @@ export const columnRepository = {
       { ordered: false },
     ),
 
-  create: (data: { owner: string; key: string; name: string; isDone: boolean; position: number }) => Column.create(data),
+  create: (data: { owner: string; key: string; name: string; isDone: boolean; color: string | null; position: number }) => Column.create(data),
 
   async findOwned(ownerId: string, id: string) {
     if (!isValidObjectId(id)) return null;

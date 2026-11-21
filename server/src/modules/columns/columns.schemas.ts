@@ -3,10 +3,12 @@ import { COLUMN_LIMITS, PATTERN, TASK_LIMITS, VALIDATION_MESSAGE } from '../../c
 
 const name = z.string().trim().min(1, VALIDATION_MESSAGE.COLUMN_NAME_REQUIRED).max(COLUMN_LIMITS.NAME_MAX, VALIDATION_MESSAGE.COLUMN_NAME_TOO_LONG(COLUMN_LIMITS.NAME_MAX));
 
-export const createColumnSchema = z.object({ name, isDone: z.boolean().default(false) });
+const color = z.string().regex(PATTERN.HEX_COLOR, VALIDATION_MESSAGE.COLOR).transform((c) => c.toLowerCase());
+
+export const createColumnSchema = z.object({ name, isDone: z.boolean().default(false), color: color.nullable().default(null) });
 
 export const updateColumnSchema = z
-  .object({ name, isDone: z.boolean() })
+  .object({ name, isDone: z.boolean(), color: color.nullable() })
   .partial()
   .refine((v) => Object.keys(v).length > 0, VALIDATION_MESSAGE.NOTHING_TO_UPDATE);
 

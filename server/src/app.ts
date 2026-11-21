@@ -7,10 +7,12 @@ import cors from 'cors';
 import express from 'express';
 import { pinoHttp } from 'pino-http';
 import { env, isProd } from './config/env.js';
-import { CACHE_CONTROL, CLIENT_BUILD, CONTENT_TYPE_JSON, HEADER, HEALTH_STATUS, HTTP_METHOD, ROUTE, SERVER } from './constants/index.js';
+import { CACHE_CONTROL, CLIENT_BUILD, CONTENT_TYPE_JSON, HEADER, HEALTH_STATUS, HTTP_METHOD, ROUTE, SERVER, TEAM_HEADER } from './constants/index.js';
 import { logger } from './infra/logger.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { columnRouter } from './modules/columns/columns.routes.js';
+import { priorityRouter } from './modules/priorities/priorities.routes.js';
+import { invitationRouter, teamRouter, workspaceRouter } from './modules/team/team.routes.js';
 import { taskRouter } from './modules/tasks/tasks.routes.js';
 import { apiCacheHeaders } from './shared/middleware/cache-headers.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/error-handler.js';
@@ -51,7 +53,7 @@ export function createApp() {
     }),
   );
   if (!isProd) {
-    app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true, methods: Object.values(HTTP_METHOD), allowedHeaders: [HEADER.CONTENT_TYPE], maxAge: 600 }));
+    app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true, methods: Object.values(HTTP_METHOD), allowedHeaders: [HEADER.CONTENT_TYPE, TEAM_HEADER.WORKSPACE_ID], maxAge: 600 }));
   }
   // JSON compresses ~5-10x, which matters most for the board (several lists per page load).
   app.use(compression());
@@ -70,6 +72,10 @@ export function createApp() {
   app.use(`${ROUTE.API}${ROUTE.AUTH.BASE}`, authRouter);
   app.use(`${ROUTE.API}${ROUTE.TASKS.BASE}`, taskRouter);
   app.use(`${ROUTE.API}${ROUTE.COLUMNS.BASE}`, columnRouter);
+  app.use(`${ROUTE.API}${ROUTE.PRIORITIES.BASE}`, priorityRouter);
+  app.use(`${ROUTE.API}${ROUTE.TEAM.BASE}`, teamRouter);
+  app.use(`${ROUTE.API}${ROUTE.INVITATIONS.BASE}`, invitationRouter);
+  app.use(`${ROUTE.API}${ROUTE.WORKSPACES.BASE}`, workspaceRouter);
   app.use(ROUTE.API, notFoundHandler);
 
   // In production the API also serves the built React app, so the whole product is a

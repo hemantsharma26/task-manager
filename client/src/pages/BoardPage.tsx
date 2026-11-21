@@ -16,7 +16,7 @@ export function BoardPage() {
       <PageHeader title="Board" />
       <FilterBar filters={filters} onChange={update} onReset={reset} isFiltered={isFiltered} />
       {/* Only the filters the board understands. Status and sort do not apply to its columns. */}
-      <Board filters={{ q: filters.q, priority: filters.priority, due: filters.due }} owner={user.name} onOpen={openIssue} />
+      <Board filters={{ q: filters.q, priority: filters.priority, assignee: filters.assignee, due: filters.due }} onOpen={openIssue} />
     </>
   );
 }

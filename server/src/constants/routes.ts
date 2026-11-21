@@ -11,13 +11,28 @@ export const ROUTE = {
     REFRESH: '/refresh',
     ME: '/me',
     PASSWORD: '/password',
+    FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/reset-password',
+    LOGOUT_OTHERS: '/logout-others',
     SESSIONS: '/sessions',
     SESSION_BY_ID: '/sessions/:id',
   },
-  TASKS: { BASE: '/tasks', ROOT: '/', STATS: '/stats', BY_ID: '/:id', MOVE: '/:id/move' },
+  TASKS: {
+    BASE: '/tasks',
+    ROOT: '/',
+    STATS: '/stats',
+    BY_ID: '/:id',
+    MOVE: '/:id/move',
+    ATTACHMENTS: '/:id/attachments',
+    ATTACHMENT_BY_ID: '/:id/attachments/:attachmentId',
+  },
   COLUMNS: { BASE: '/columns', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
+  PRIORITIES: { BASE: '/priorities', ROOT: '/', BY_ID: '/:id', MOVE: '/:id/move' },
+  TEAM: { BASE: '/team', MEMBERS: '/members', MEMBER_BY_ID: '/members/:userId', INVITATIONS: '/invitations', INVITATION_BY_ID: '/invitations/:invitationId' },
+  INVITATIONS: { BASE: '/invitations', BY_TOKEN: '/:token', ACCEPT: '/:token/accept' },
+  WORKSPACES: { BASE: '/workspaces' },
 } as const;
 
-export const ROUTE_PARAM = { ID: 'id' } as const;
+export const ROUTE_PARAM = { ID: 'id', ATTACHMENT_ID: 'attachmentId', USER_ID: 'userId', INVITATION_ID: 'invitationId', TOKEN: 'token' } as const;
 
 export const HEALTH_STATUS = { OK: 'ok' } as const;

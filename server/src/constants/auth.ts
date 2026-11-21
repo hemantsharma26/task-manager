@@ -30,10 +30,15 @@ export const TOKEN = {
 export const SESSION_REVOKE_REASON = {
   LOGOUT: 'logout',
   LOGOUT_ALL: 'logout_all',
+  LOGOUT_OTHERS: 'logout_others',
+  PASSWORD_RESET: 'password_reset',
   PASSWORD_CHANGED: 'password_changed',
   REUSE_DETECTED: 'refresh_token_reuse',
   REVOKED_BY_USER: 'revoked_by_user',
 } as const;
+
+/** A reset link works once, for this long, and a person can have at most this many requested per hour. */
+export const PASSWORD_RESET = { TTL_MINUTES: 30, TOKEN_BYTES: 32, MAX_PER_HOUR: 3 } as const;
 
 export const BCRYPT_ROUNDS = { DEFAULT: 12, TEST: 4 } as const;
 export const NAME_LIMITS = { MAX: 80 } as const;
@@ -78,6 +83,10 @@ export const SECURITY_EVENT = {
   REGISTER_THROTTLED: 'auth.register_throttled',
   REFRESH_REUSE_DETECTED: 'auth.refresh_token_reuse_detected',
   LOGOUT_ALL: 'auth.logout_all',
+  LOGOUT_OTHERS: 'auth.logout_others',
+  PASSWORD_RESET_REQUESTED: 'auth.password_reset_requested',
+  PASSWORD_RESET_DONE: 'auth.password_reset_done',
+  PASSWORD_RESET_BAD_TOKEN: 'auth.password_reset_bad_token',
   PASSWORD_CHANGED: 'auth.password_changed',
   SESSION_REVOKED: 'auth.session_revoked',
   ORIGIN_BLOCKED: 'security.origin_blocked',

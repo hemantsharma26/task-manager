@@ -9,11 +9,11 @@ export const MAX_COLUMNS = 12;
 
 // What a brand-new account looks like before the server has answered, so the first paint already has the board's shape.
 const FALLBACK: Column[] = [
-  { id: 'f1', key: 'todo', name: 'To do', isDone: false },
-  { id: 'f2', key: 'in_progress', name: 'In progress', isDone: false },
-  { id: 'f3', key: 'issue', name: 'Issue', isDone: false },
-  { id: 'f4', key: 'rework', name: 'Re-work', isDone: false },
-  { id: 'f5', key: 'done', name: 'Done', isDone: true },
+  { id: 'f1', key: 'todo', name: 'To do', isDone: false, color: null },
+  { id: 'f2', key: 'in_progress', name: 'In progress', isDone: false, color: null },
+  { id: 'f3', key: 'issue', name: 'Issue', isDone: false, color: null },
+  { id: 'f4', key: 'rework', name: 'Re-work', isDone: false, color: null },
+  { id: 'f5', key: 'done', name: 'Done', isDone: true, color: null },
 ];
 
 export function useColumns() {
@@ -32,7 +32,8 @@ export function useColumnLookup() {
   const byKey = useMemo(() => new Map(columns.map((c) => [c.key, c])), [columns]);
   const isDone = useCallback((key: string) => byKey.get(key)?.isDone ?? key === 'done', [byKey]);
   const nameOf = useCallback((key: string) => byKey.get(key)?.name ?? key, [byKey]);
-  return { columns, loaded: !!data, isDone, nameOf };
+  const colorOf = useCallback((key: string) => byKey.get(key)?.color ?? null, [byKey]);
+  return { columns, loaded: !!data, isDone, nameOf, colorOf };
 }
 
 type Reply = { columns: Column[] };
@@ -59,10 +60,10 @@ function useColumnMutation<V>(request: (v: V) => Promise<Reply>, opts: { optimis
 }
 
 export const useAddColumn = () =>
-  useColumnMutation((v: { name: string; isDone: boolean }) => http<Reply>('/columns', { method: 'POST', body: v }));
+  useColumnMutation((v: { name: string; isDone: boolean; color?: string | null }) => http<Reply>('/columns', { method: 'POST', body: v }));
 
 export const useUpdateColumn = () =>
-  useColumnMutation((v: { id: string; changes: { name?: string; isDone?: boolean } }) => http<Reply>(`/columns/${v.id}`, { method: 'PATCH', body: v.changes }), {
+  useColumnMutation((v: { id: string; changes: { name?: string; isDone?: boolean; color?: string | null } }) => http<Reply>(`/columns/${v.id}`, { method: 'PATCH', body: v.changes }), {
     optimistic: (cols, v) => cols.map((c) => (c.id === v.id ? { ...c, ...v.changes } : c)),
     // Turning "done" on or off finishes or reopens the tasks inside.
     refetchTasks: true,

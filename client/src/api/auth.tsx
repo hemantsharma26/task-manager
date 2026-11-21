@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { COLUMNS_KEY } from './columns';
-import { ApiError, http, setUnauthorizedHandler } from './http';
+import { ApiError, http, setActiveWorkspace, setUnauthorizedHandler } from './http';
 import type { User } from './types';
 
 const ME_KEY = ['me'] as const;
@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 /** Nothing of the previous user may stay in memory: the next person on a shared computer sees none of it. */
 function forgetEverything(qc: ReturnType<typeof useQueryClient>) {
   qc.setQueryData(ME_KEY, null);
-  for (const key of [['tasks'], ['stats'], COLUMNS_KEY, SESSIONS_KEY]) qc.removeQueries({ queryKey: key });
+  setActiveWorkspace(null);
+  for (const key of [['tasks'], ['stats'], COLUMNS_KEY, ['priorities'], SESSIONS_KEY, ['workspaces'], ['team'], ['invitation']]) qc.removeQueries({ queryKey: key });
 }
 
 export const useAuth = () => useContext(AuthContext);
@@ -108,3 +109,18 @@ export function useRevokeSession() {
     onSuccess: () => qc.invalidateQueries({ queryKey: SESSIONS_KEY }),
   });
 }
+
+/** Every device except this one. This one stays signed in. */
+export function useSignOutOthers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => http<void>('/auth/logout-others', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SESSIONS_KEY }),
+  });
+}
+
+/** "Forgot password": always succeeds from the caller's side, whether or not the address has an account. */
+export const useForgotPassword = () => useMutation({ mutationFn: (email: string) => http<{ ok: true }>('/auth/forgot-password', { method: 'POST', body: { email } }) });
+
+export const useResetPassword = () =>
+  useMutation({ mutationFn: (v: { token: string; newPassword: string }) => http<void>('/auth/reset-password', { method: 'POST', body: v }) });
